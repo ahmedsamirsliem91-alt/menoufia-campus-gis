@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" id="html-root">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Menoufia University Smart Campus GIS</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --text-color: #0f172a;
+            --panel-bg: #ffffff;
+            --border-color: #cbd5e1;
+            --primary-color: #2563eb;
+            --shadow-color: rgba(0, 0, 0, 0.15);
+            --map-filter: brightness(1) contrast(1);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0b0f19;
+            --text-color: #f8fafc;
+            --panel-bg: #111827;
+            --border-color: #374151;
+            --primary-color: #3b82f6;
+            --shadow-color: rgba(0, 0, 0, 0.85);
+            --map-filter: brightness(0.8) contrast(1.1);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', 'Cairo', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+            overflow: hidden;
+        }
+
+        #map {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            filter: var(--map-filter);
+            transition: filter 0.3s ease;
+        }
+
+        #control-panel {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+            background: var(--panel-bg);
+            padding: 8px 14px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .control-btn, select.control-select {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--panel-bg);
+            color: var(--text-color);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover, select.control-select:hover {
+            border-color: var(--primary-color);
+            background-color: var(--primary-color);
+            color: #ffffff;
+        }
+
+        /* تم إنزال القائمة الجانبية تحت شوية لتفادي التداخل (top: 85px) */
+        #sidebar {
+            position: absolute;
+            top: 85px;
+            left: 15px;
+            z-index: 1000;
+            background: var(--panel-bg);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            width: 350px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--bg-color);
+        }
+
+        .sidebar-header-toggle {
+            padding: 8px 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            background: var(--panel-bg);
+            color: var(--primary-color);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-content {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .sidebar-content.collapsed { display: none; }
+
+        #search-input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--panel-bg);
+            color: var(--text-color);
+            box-sizing: border-box;
+            font-size: 0.85em;
+        }
+
+        .nav-select, .nav-mode-select {
+            width: 100%;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--panel-bg);
+            color: var(--text-color);
+            font-size: 0.85em;
+        }
+
+        .nav-actions { display: flex; gap: 5px; }
+
+        .nav-btn {
+            flex: 1;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.85em;
+            cursor: pointer;
+        }
+
+        .exit-nav-btn { background-color: #dc2626 !important; }
+        .whatsapp-share-btn { background-color: #16a34a !important; }
+
+        #route-info {
+            font-size: 0.8em;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-align: center;
+            padding: 6px;
+            background: var(--panel-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        #locations-list {
+            max-height: 20vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .location-item {
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--panel-bg);
+            cursor: pointer;
+        }
+
+        .loc-title { font-weight: 700; font-size: 0.85em; color: var(--primary-color); }
+        .loc-sub { font-size: 0.75em; opacity: 0.8; }
+
+        #map-layers-widget {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            z-index: 1000;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 5px;
+            display: flex;
+            gap: 5px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+        }
+
+        .layer-btn {
+            padding: 6px 10px;
+            font-size: 0.75em;
+            font-weight: bold;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-color);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .layer-btn.active, .layer-btn:hover {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* تم ضبط مسافة شريط الطقس والسرعة العلوي */
+        #campus-status-overlay {
+            position: absolute;
+            top: 15px;
+            left: 50px;
+            z-index: 999;
+            background: var(--panel-bg);
+            padding: 6px 14px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            font-size: 0.8em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+
+        #compass-widget {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            z-index: 1000;
+            background: var(--panel-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            font-weight: bold;
+            font-size: 0.85em;
+            color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .map-pin-label {
+            background: var(--panel-bg) !important;
+            color: var(--text-color) !important;
+            border: 1px solid var(--border-color) !important;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            white-space: nowrap;
+        }
+
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            background: var(--panel-bg) !important;
+            color: var(--text-color) !important;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body data-theme="light">
+
+    <!-- شريط الحالة العلوي المحدث بدعم الطقس الحي -->
+    <div id="campus-status-overlay">
+        <span id="weather-display">☀️ طقس طنطا: جاري الجلب...</span>
+        <span>🟢 الحرم الجامعي: نشط وآمن</span>
+        <span id="live-speedometer" style="color: var(--primary-color);">⚡ السرعة: 0 كم/س</span>
+    </div>
+
+    <div id="control-panel">
+        <button class="control-btn" onclick="fetchLocationsData()" title="تحديث البيانات أونلاين">🔄 تحديث أونلاين</button>
+        <button class="control-btn" id="lang-toggle-btn" onclick="toggleLanguage()">العربية / English</button>
+        <select class="control-select" id="theme-selector" onchange="changeTheme(this.value)">
+            <option value="light">Light Mode</option>
+            <option value="dark">Dark Mode</option>
+        </select>
+    </div>
+
+    <div id="sidebar">
+        <h3 id="sidebar-header" style="margin: 0; font-size: 0.95em;">Menoufia University GIS</h3>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-header-toggle" onclick="toggleAccordion('nav-content')">
+                <span>🧭 التوجيه الحي ومقياس السرعة</span>
+                <span>▼</span>
+            </div>
+            <div id="nav-content" class="sidebar-content">
+                <select id="start-loc" class="nav-select">
+                    <option value="gps">📍 موقعي الحالي (GPS)</option>
+                </select>
+                <select id="end-loc" class="nav-select">
+                    <option value="">اختر الوجهة داخل الجامعة...</option>
+                </select>
+                <select id="transport-mode" class="nav-mode-select">
+                    <option value="walk">🚶‍♂️ سير على الأقدام</option>
+                    <option value="bike">🚲 دراجة بخارية</option>
+                    <option value="car">🚗 قيادة سيارة</option>
+                </select>
+                <div class="nav-actions">
+                    <button class="nav-btn" id="nav-btn" onclick="startLiveNavigation()">ابدأ التوجيه</button>
+                    <button class="nav-btn exit-nav-btn" id="exit-nav-btn" onclick="stopLiveNavigation()" style="display:none;">إيقاف</button>
+                    <button class="nav-btn whatsapp-share-btn" onclick="shareRouteWhatsApp()" title="مشاركة واتساب">💬 واتساب</button>
+                </div>
+                <div id="route-info">اختر الوجهة وابدأ التنقل</div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-header-toggle" onclick="toggleAccordion('dir-content')">
+                <span>🏢 دليل الكليات والمقرات</span>
+                <span>▼</span>
+            </div>
+            <div id="dir-content" class="sidebar-content">
+                <input type="text" id="search-input" placeholder="بحث سريع بداخل الجامعة..." onkeyup="filterLocations(this.value)">
+                <div id="locations-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map-layers-widget">
+        <button class="layer-btn active" onclick="switchMapLayer('streets', this)">🗺️ الشوارع</button>
+        <button class="layer-btn" onclick="switchMapLayer('satellite', this)">🛰️ قمر صناعي</button>
+        <button class="layer-btn" onclick="switchMapLayer('terrain', this)">⛰️ تضاريس</button>
+    </div>
+
+    <div id="compass-widget" onclick="recenterAndCalibrateCompass()" title="موقعي الحالي">
+        <span id="compass-icon">🧭 N</span>
+    </div>
+    
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        let currentLang = 'ar';
+        let map;
+        let markersLayer = L.layerGroup();
+        let routeLayer = L.layerGroup();
+        let allLocationsData = [];
+        let userLocationMarker = null;
+        let userCoords = { lat: 30.5578, lng: 31.0130, speed: 0 };
+        let isNavigating = false;
+        let activeDestination = null;
+        let tileLayers = {};
+
+        function initMap() {
+            map = L.map('map', { maxZoom: 22, zoomControl: true }).setView([30.5578, 31.0130], 17);
+
+            tileLayers['streets'] = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 22, maxNativeZoom: 19, attribution: '© OpenStreetMap'
+            });
+
+            tileLayers['satellite'] = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 22, maxNativeZoom: 19, attribution: 'Tiles © Esri'
+            });
+
+            tileLayers['terrain'] = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                maxZoom: 22, maxNativeZoom: 17, attribution: '© OpenTopoMap'
+            });
+
+            tileLayers['streets'].addTo(map);
+            markersLayer.addTo(map);
+            routeLayer.addTo(map);
+
+            fetchLocationsData();
+            initLiveGPSAndCompass();
+            fetchDynamicWeather(30.5578, 31.0130); // جلب الطقس الديناميكي لمنطقة طنطا
+        }
+
+        // دالة جلب الطقس الحقيقي الديناميكي أونلاين
+        function fetchDynamicWeather(lat, lng) {
+            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
+            fetch(weatherUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.current_weather) {
+                        const temp = Math.round(data.current_weather.temperature);
+                        const weatherText = currentLang === 'ar' ? `☀️ طقس طنطا: ${temp}°C` : `☀️ Tanta Weather: ${temp}°C`;
+                        document.getElementById('weather-display').textContent = weatherText;
+                    }
+                })
+                .catch(err => console.log("Weather notice:", err));
+        }
+
+        function switchMapLayer(layerKey, btnElement) {
+            Object.keys(tileLayers).forEach(k => {
+                if (map.hasLayer(tileLayers[k])) map.removeLayer(tileLayers[k]);
+            });
+            tileLayers[layerKey].addTo(map);
+            document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+        }
+
+        function toggleAccordion(id) {
+            document.getElementById(id).classList.toggle('collapsed');
+        }
+
+        function fetchLocationsData() {
+            fetch('/api/locations')
+                .then(response => response.json())
+                .then(data => {
+                    allLocationsData = data;
+                    renderMapMarkers(data);
+                    renderSidebarList(data);
+                    populateRoutingDropdowns(data);
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }
+
+        function populateRoutingDropdowns(locations) {
+            const startSelect = document.getElementById('start-loc');
+            const endSelect = document.getElementById('end-loc');
+            
+            startSelect.innerHTML = `<option value="gps">📍 موقعي الحالي (GPS)</option>`;
+            endSelect.innerHTML = `<option value="">اختر الوجهة داخل الجامعة...</option>`;
+
+            locations.forEach((loc, index) => {
+                if (loc.lat && loc.lng) {
+                    let name = currentLang === 'ar' ? (loc.building_name_ar || loc.building_name) : (loc.building_name_en || loc.building_name);
+                    let section = currentLang === 'ar' ? (loc.section_office_ar || loc.section_office) : (loc.section_office_en || loc.section_office);
+
+                    let optStart = document.createElement('option');
+                    optStart.value = index;
+                    optStart.textContent = `${name} (${section || loc.category})`;
+                    startSelect.appendChild(optStart);
+
+                    let optEnd = document.createElement('option');
+                    optEnd.value = index;
+                    optEnd.textContent = `${name} (${section || loc.category})`;
+                    endSelect.appendChild(optEnd);
+                }
+            });
+        }
+
+        // رسم الدبابيس وإعادة صياغة النافذة المنبثقة (Popup) بإظهار تفاصيل موسعة وغنية
+        function renderMapMarkers(locations) {
+            markersLayer.clearLayers();
+            locations.forEach(loc => {
+                if (loc.lat && loc.lng) {
+                    let color = loc.color || '#2563eb';
+                    let displayName = currentLang === 'ar' ? (loc.building_name_ar || loc.building_name) : (loc.building_name_en || loc.building_name);
+
+                    const pinIcon = L.divIcon({
+                        className: 'custom-3d-pin',
+                        html: `<div style="background-color: ${color}; width: 18px; height: 18px; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 8px; color: white;">🏢</div>`,
+                        iconSize: [18, 18],
+                        iconAnchor: [9, 9]
+                    });
+
+                    const popupHtml = `
+                        <div style="direction: ${currentLang === 'ar' ? 'rtl' : 'ltr'}; text-align: ${currentLang === 'ar' ? 'right' : 'left'}; min-width: 220px; font-family: 'Cairo', sans-serif;">
+                            <h4 style="margin: 0 0 8px 0; color: var(--primary-color); font-size: 1.05em; border-bottom: 2px solid var(--border-color); padding-bottom: 4px;">${displayName}</h4>
+                            <p style="margin: 4px 0; font-size: 0.85em;"><strong>🏢 الكود:</strong> ${loc.building_id || 'N/A'}</p>
+                            <p style="margin: 4px 0; font-size: 0.85em;"><strong>📌 القسم/المكتب:</strong> ${currentLang === 'ar' ? (loc.section_office_ar || loc.section_office) : (loc.section_office_en || loc.section_office) || 'N/A'}</p>
+                            <p style="margin: 4px 0; font-size: 0.85em;"><strong>📍 الطابق:</strong> ${currentLang === 'ar' ? (loc.floor_level_ar || loc.floor_level) : (loc.floor_level_en || loc.floor_level) || 'N/A'}</p>
+                            <p style="margin: 4px 0; font-size: 0.85em;"><strong>🏷️ الفئة:</strong> ${loc.category || 'Academic'}</p>
+                            <p style="margin: 4px 0; font-size: 0.85em;"><strong>✨ حالة الاعتماد:</strong> <span style="color: #16a34a; font-weight: bold;">${loc.iso_status || 'N/A'}</span></p>
+                            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color); font-size: 0.8em; opacity: 0.9;">
+                                <strong>📝 التفاصيل:</strong> ${currentLang === 'ar' ? (loc.details_ar || 'لا توجد تفاصيل إضافية مسجلة.') : (loc.details_en || 'No additional details available.')}
+                            </div>
+                        </div>
+                    `;
+
+                    const marker = L.marker([loc.lat, loc.lng], { icon: pinIcon }).bindPopup(popupHtml);
+                    marker.bindTooltip(displayName, { permanent: true, direction: 'right', className: 'map-pin-label', offset: [8, 0] });
+                    markersLayer.addLayer(marker);
+                }
+            });
+        }
+
+        function renderSidebarList(locations) {
+            const listContainer = document.getElementById('locations-list');
+            listContainer.innerHTML = '';
+
+            locations.forEach(loc => {
+                if (loc.lat && loc.lng) {
+                    let displayName = currentLang === 'ar' ? (loc.building_name_ar || loc.building_name) : (loc.building_name_en || loc.building_name);
+                    const item = document.createElement('div');
+                    item.className = 'location-item';
+                    item.onclick = () => { map.flyTo([loc.lat, loc.lng], 19, { animate: true, duration: 1.5 }); };
+                    item.innerHTML = `<div class="loc-title">${displayName}</div>`;
+                    listContainer.appendChild(item);
+                }
+            });
+        }
+
+        function startLiveNavigation() {
+            const startVal = document.getElementById('start-loc').value;
+            const endVal = document.getElementById('end-loc').value;
+            const infoDiv = document.getElementById('route-info');
+
+            if (endVal === "") {
+                infoDiv.textContent = currentLang === 'ar' ? "⚠️ اختر الوجهة أولاً!" : "⚠️ Select destination!";
+                return;
+            }
+
+            activeDestination = allLocationsData[endVal];
+            let startLat, startLng;
+            if (startVal === "gps") {
+                startLat = userCoords.lat;
+                startLng = userCoords.lng;
+            } else {
+                const startLoc = allLocationsData[startVal];
+                startLat = startLoc.lat;
+                startLng = startLoc.lng;
+            }
+
+            isNavigating = true;
+            document.getElementById('nav-btn').style.display = 'none';
+            document.getElementById('exit-nav-btn').style.display = 'block';
+
+            updateLiveRoute(startLat, startLng, activeDestination.lat, activeDestination.lng);
+        }
+
+        function updateLiveRoute(sLat, sLng, dLat, dLng) {
+            if (!isNavigating) return;
+
+            routeLayer.clearLayers();
+            const latlngs = [[sLat, sLng], [dLat, dLng]];
+            const mode = document.getElementById('transport-mode').value;
+            let color = '#2563eb';
+            if (mode === 'car') color = '#dc2626';
+            else if (mode === 'bike') color = '#16a34a';
+
+            const routeLine = L.polyline(latlngs, {
+                color: color, weight: 6, opacity: 0.85, dashArray: '8, 8', lineCap: 'round'
+            }).addTo(routeLayer);
+
+            const R = 6371e3;
+            const φ1 = sLat * Math.PI/180;
+            const φ2 = dLat * Math.PI/180;
+            const Δφ = (dLat - sLat) * Math.PI/180;
+            const Δλ = (dLng - sLng) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distanceMeters = Math.round(R * c);
+
+            let speedMetersPerMin = 80;
+            if (mode === 'bike') speedMetersPerMin = 250;
+            if (mode === 'car') speedMetersPerMin = 500;
+
+            if (distanceMeters <= 20) {
+                alert(currentLang === 'ar' ? "🎉 لقد وصلت إلى وجهتك المطلوبة!" : "🎉 You have arrived at your destination!");
+                stopLiveNavigation();
+                return;
+            }
+
+            const timeMins = Math.max(1, Math.ceil(distanceMeters / speedMetersPerMin));
+            const infoDiv = document.getElementById('route-info');
+            infoDiv.innerHTML = `
+                <div>🚀 المسافة: ${distanceMeters >= 1000 ? (distanceMeters/1000).toFixed(1) + ' كم' : distanceMeters + ' متر'}</div>
+                <div>⏱️ الوقت المقدر: ${timeMins} دقيقة (${mode})</div>
+            `;
+
+            map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
+        }
+
+        function shareRouteWhatsApp() {
+            const endVal = document.getElementById('end-loc').value;
+            if (endVal === "") {
+                alert(currentLang === 'ar' ? "اختر الوجهة أولاً لمشاركتها عبر واتساب!" : "Select destination first!");
+                return;
+            }
+            const destName = document.getElementById('end-loc').options[document.getElementById('end-loc').selectedIndex].text;
+            const text = encodeURIComponent(`📌 مسار التوجيه الجامعي المعتمد إلى: *${destName}* عبر نظام جامعة المنوفية الذكي 📍\nرابط الخريطة: ${window.location.href}`);
+            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+        }
+
+        function stopLiveNavigation() {
+            isNavigating = false;
+            activeDestination = null;
+            routeLayer.clearLayers();
+            document.getElementById('nav-btn').style.display = 'block';
+            document.getElementById('exit-nav-btn').style.display = 'none';
+            document.getElementById('route-info').textContent = currentLang === 'ar' ? "اختر الوجهة وابدأ التنقل" : "Select destination & start";
+        }
+
+        function initLiveGPSAndCompass() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        userCoords.lat = position.coords.latitude;
+                        userCoords.lng = position.coords.longitude;
+                        
+                        if (position.coords.speed !== null && position.coords.speed >= 0) {
+                            userCoords.speed = Math.round(position.coords.speed * 3.6);
+                            document.getElementById('live-speedometer').textContent = `⚡ السرعة: ${userCoords.speed} كم/س`;
+                        }
+                        
+                        if (!userLocationMarker) {
+                            const userIcon = L.divIcon({
+                                className: 'user-gps-pin',
+                                html: `<div style="background-color: #22c55e; width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 0 10px rgba(34,197,94,0.9);"></div>`,
+                                iconSize: [16, 16],
+                                iconAnchor: [8, 8]
+                            });
+                            userLocationMarker = L.marker([userCoords.lat, userCoords.lng], { icon: userIcon }).addTo(map);
+                        } else {
+                            userLocationMarker.setLatLng([userCoords.lat, userCoords.lng]);
+                        }
+
+                        if (isNavigating && activeDestination) {
+                            updateLiveRoute(userCoords.lat, userCoords.lng, activeDestination.lat, activeDestination.lng);
+                        }
+                    },
+                    (error) => { console.warn("GPS Notice: ", error.message); },
+                    { enableHighAccuracy: true, maximumAge: 1000 }
+                );
+            }
+        }
+
+        function recenterAndCalibrateCompass() {
+            map.flyTo([userCoords.lat, userCoords.lng], 19, { animate: true, duration: 1 });
+        }
+
+        function filterLocations(query) {
+            const lowerQ = query.toLowerCase();
+            const filtered = allLocationsData.filter(loc => 
+                (loc.building_name_ar && loc.building_name_ar.toLowerCase().includes(lowerQ)) ||
+                (loc.building_name_en && loc.building_name_en.toLowerCase().includes(lowerQ)) ||
+                (loc.section_office_ar && loc.section_office_ar.toLowerCase().includes(lowerQ))
+            );
+            renderMapMarkers(filtered);
+            renderSidebarList(filtered);
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'ar' : 'en';
+            const htmlRoot = document.getElementById('html-root');
+            htmlRoot.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
+            htmlRoot.setAttribute('lang', currentLang);
+            renderMapMarkers(allLocationsData);
+            renderSidebarList(allLocationsData);
+            populateRoutingDropdowns(allLocationsData);
+        }
+
+        function changeTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            localStorage.setItem('campus_theme', theme);
+        }
+
+        window.onload = function() {
+            const savedTheme = localStorage.getItem('campus_theme') || 'light';
+            document.getElementById('theme-selector').value = savedTheme;
+            changeTheme(savedTheme);
+            initMap();
+        };
+    </script>
+</body>
+</html>
