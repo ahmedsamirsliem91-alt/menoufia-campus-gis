@@ -1,687 +1,822 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr" id="html-root">
+<html lang="ar" dir="rtl" id="html-root">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title">Menoufia University Smart Campus GIS</title>
-    
-    <!-- Leaflet CSS -->
+    <title id="page-title">نظام الجغرافيا المكاني لجامعة المنوفية | Menoufia GIS</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
     <style>
         :root {
-            --bg-color: #f1f5f9;
-            --text-color: #0f172a;
-            --panel-bg: #ffffff;
-            --border-color: #cbd5e1;
-            --primary-color: #2563eb;
-            --shadow-color: rgba(0, 0, 0, 0.15);
-            --map-filter: brightness(1) contrast(1);
+            --bg-color: #f1f5f9; --text-color: #0f172a; --panel-bg: #ffffff;
+            --border-color: #cbd5e1; --primary-color: #2563eb; --shadow-color: rgba(0, 0, 0, 0.15);
         }
-
         [data-theme="dark"] {
-            --bg-color: #0b0f19;
-            --text-color: #f8fafc;
-            --panel-bg: #111827;
-            --border-color: #374151;
-            --primary-color: #3b82f6;
-            --shadow-color: rgba(0, 0, 0, 0.85);
-            --map-filter: brightness(0.8) contrast(1.1);
+            --bg-color: #0b0f19; --text-color: #f8fafc; --panel-bg: #111827;
+            --border-color: #374151; --primary-color: #3b82f6; --shadow-color: rgba(0, 0, 0, 0.85);
         }
 
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', 'Cairo', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            transition: background-color 0.3s ease, color 0.3s ease;
-            overflow: hidden;
+        /* دعم الوضع المظلم لطبقة الشوارع تلقائياً */
+        [data-theme="dark"] .leaflet-tile-pane {
+        filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
         }
 
-        #map {
-            width: 100vw;
-            height: 100vh;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-            filter: var(--map-filter);
-            transition: filter 0.3s ease;
-        }
+        body { margin: 0; padding: 0; font-family: 'Cairo', 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-color); overflow: hidden; }
+        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
 
-        #control-panel {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            z-index: 1000;
-            background: var(--panel-bg);
-            padding: 8px 14px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px var(--shadow-color);
-            border: 1px solid var(--border-color);
-            display: flex;
-            gap: 10px;
-            align-items: center;
+        /* زر الإعدادات المنسدل (أعلى اليمين) */
+        #settings-menu-container {
+            position: absolute; top: 15px; right: 15px; z-index: 1000;
         }
-
+        .menu-toggle-btn {
+            background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color);
+            padding: 8px 14px; border-radius: 12px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 20px var(--shadow-color); display: flex; align-items: center; gap: 6px; font-size: 0.85em;
+        }
+        .dropdown-panel {
+            position: absolute; top: 45px; right: 0; background: var(--panel-bg); border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 10px; box-shadow: 0 4px 20px var(--shadow-color); display: none;
+            flex-direction: column; gap: 8px; min-width: 160px;
+        }
+        .dropdown-panel.show { display: flex; }
         .control-btn, select.control-select {
-            padding: 6px 12px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background: var(--panel-bg);
-            color: var(--text-color);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--panel-bg); color: var(--text-color); font-weight: 600; cursor: pointer; width: 100%; font-size: 0.8em; text-align: right;
         }
+        [data-theme="dark"] select.control-select { background: #111827; color: #f8fafc; }
 
-        .control-btn:hover, select.control-select:hover {
-            border-color: var(--primary-color);
-            background-color: var(--primary-color);
-            color: #ffffff;
-        }
-
-        /* تم إنزال القائمة الجانبية تحت شوية لتفادي التداخل (top: 85px) */
-        #sidebar {
-            position: absolute;
-            top: 85px;
-            left: 15px;
-            z-index: 1000;
-            background: var(--panel-bg);
-            padding: 12px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px var(--shadow-color);
-            border: 1px solid var(--border-color);
-            width: 350px;
-            max-height: 80vh;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            box-sizing: border-box;
-            overflow-y: auto;
-        }
-
-        .sidebar-section {
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            overflow: hidden;
-            background: var(--bg-color);
-        }
-
-        .sidebar-header-toggle {
-            padding: 8px 12px;
-            font-size: 0.85em;
-            font-weight: bold;
-            background: var(--panel-bg);
-            color: var(--primary-color);
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .sidebar-content {
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
+        /* القائمة الجانبية */
+        #sidebar { position: absolute; top: 75px; left: 10px; z-index: 1000; background: var(--panel-bg); padding: 12px; border-radius: 12px; box-shadow: 0 4px 20px var(--shadow-color); border: 1px solid var(--border-color); width: 260px; max-height: 75vh; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+        .sidebar-section { border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: var(--bg-color); }
+        .sidebar-header-toggle { padding: 6px 10px; font-size: 0.75em; font-weight: bold; background: var(--panel-bg); color: var(--primary-color); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-content { padding: 8px; display: flex; flex-direction: column; gap: 5px; }
         .sidebar-content.collapsed { display: none; }
-
-        #search-input {
-            width: 100%;
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: var(--panel-bg);
-            color: var(--text-color);
-            box-sizing: border-box;
-            font-size: 0.85em;
-        }
-
-        .nav-select, .nav-mode-select {
-            width: 100%;
-            padding: 6px 10px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: var(--panel-bg);
-            color: var(--text-color);
-            font-size: 0.85em;
-        }
-
+        #search-input { width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-color); box-sizing: border-box; }
+        .nav-select, .nav-mode-select { width: 100%; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-color); font-size: 0.75em; }
         .nav-actions { display: flex; gap: 5px; }
-
-        .nav-btn {
-            flex: 1;
-            background-color: var(--primary-color);
-            color: #ffffff;
-            border: none;
-            padding: 8px;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 0.85em;
-            cursor: pointer;
-        }
-
+        .nav-btn { flex: 1; background-color: var(--primary-color); color: #ffffff; border: none; padding: 6px; border-radius: 6px; font-weight: bold; font-size: 0.75em; cursor: pointer; }
         .exit-nav-btn { background-color: #dc2626 !important; }
         .whatsapp-share-btn { background-color: #16a34a !important; }
-
-        #route-info {
-            font-size: 0.8em;
-            font-weight: 700;
-            color: var(--primary-color);
-            text-align: center;
-            padding: 6px;
-            background: var(--panel-bg);
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
+        .parking-btn { background-color: #d97706 !important; }
+        #route-info { font-size: 0.75em; font-weight: 700; color: var(--primary-color); text-align: center; padding: 6px; background: var(--panel-bg); border-radius: 6px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 3px; }
+        #locations-list { max-height: 16vh; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+        .location-item { padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--panel-bg); cursor: pointer; }
+        .loc-title { font-weight: 600; font-size: 0.75em; color: var(--primary-color); }
+        .loc-subtitle { font-size: 0.65em; opacity: 0.8; }
+        #campus-status-overlay { position: absolute; top: 10px; left: 50px; z-index: 999; background: var(--panel-bg); padding: 6px 14px; border-radius: 8px; box-shadow: 0 4px 15px var(--shadow-color); border: 1px solid var(--border-color); font-size: 0.8em; display: flex; align-items: center; gap: 12px; font-weight: 600; }
+        
+        /* قائمة الطبقات المنسدلة (أسفل اليسار) */
+        #map-layers-container { position: absolute; bottom: 10px; left: 15px; z-index: 1000; }
+        .layers-dropdown-panel {
+            position: absolute; bottom: 45px; left: 0; background: var(--panel-bg); border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 6px; box-shadow: 0 4px 20px var(--shadow-color); display: none;
+            flex-direction: column; gap: 5px; min-width: 130px;
         }
+        .layers-dropdown-panel.show { display: flex; }
+        .layer-btn { padding: 6px 10px; font-size: 0.75em; font-weight: bold; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); cursor: pointer; text-align: right; }
+        .layer-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
 
-        #locations-list {
-            max-height: 20vh;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
+        #compass-widget { position: absolute; bottom: 10px; right: 15px; z-index: 1000; background: var(--panel-bg); border: 2px solid var(--border-color); border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--primary-color); font-weight: bold; }
+        /* تنسيق احترافي للمربع والسهم السفلي الخاص به */
 
-        .location-item {
-            padding: 6px 8px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: var(--panel-bg);
-            cursor: pointer;
-        }
+        
 
-        .loc-title { font-weight: 700; font-size: 0.85em; color: var(--primary-color); }
-        .loc-sub { font-size: 0.75em; opacity: 0.8; }
 
-        #map-layers-widget {
-            position: absolute;
-            bottom: 25px;
-            left: 25px;
-            z-index: 1000;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 5px;
-            display: flex;
-            gap: 5px;
-            box-shadow: 0 4px 15px var(--shadow-color);
-        }
-
-        .layer-btn {
-            padding: 6px 10px;
-            font-size: 0.75em;
-            font-weight: bold;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-color);
-            color: var(--text-color);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .layer-btn.active, .layer-btn:hover {
-            background-color: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-
-        /* تم ضبط مسافة شريط الطقس والسرعة العلوي */
-        #campus-status-overlay {
-            position: absolute;
-            top: 15px;
-            left: 50px;
-            z-index: 999;
-            background: var(--panel-bg);
-            padding: 6px 14px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px var(--shadow-color);
-            border: 1px solid var(--border-color);
-            font-size: 0.8em;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-weight: 600;
-        }
-
-        #compass-widget {
-            position: absolute;
-            bottom: 25px;
-            right: 25px;
-            z-index: 1000;
-            background: var(--panel-bg);
-            border: 2px solid var(--border-color);
-            border-radius: 50%;
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 15px var(--shadow-color);
-            font-weight: bold;
-            font-size: 0.85em;
-            color: var(--primary-color);
-            cursor: pointer;
-        }
-
-        .map-pin-label {
-            background: var(--panel-bg) !important;
-            color: var(--text-color) !important;
-            border: 1px solid var(--border-color) !important;
-            padding: 2px 6px;
-            font-size: 10px;
-            font-weight: 700;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            white-space: nowrap;
-        }
-
-        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-            background: var(--panel-bg) !important;
-            color: var(--text-color) !important;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px var(--shadow-color);
-            border: 1px solid var(--border-color);
-        }
+    /* تثبيت التولتيب بدقة فوق الدبوس مباشرة دون أي إزاحة */
+.leaflet-tooltip.map-pin-label {
+    position: absolute !important;
+    margin-top: -35px !important;
+    transform: translateX(-50%) !important;
+    background: var(--panel-bg) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--border-color) !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 4px 15px var(--shadow-color) !important;
+    white-space: nowrap !important;
+}
+/* إخفاء السهم الافتراضي لمنع التداخل */
+.leaflet-tooltip.map-pin-label::before {
+    display: none !important;
+}
     </style>
 </head>
 <body data-theme="light">
 
-    <!-- شريط الحالة العلوي المحدث بدعم الطقس الحي -->
     <div id="campus-status-overlay">
         <span id="weather-display">☀️ طقس طنطا: جاري الجلب...</span>
-        <span>🟢 الحرم الجامعي: نشط وآمن</span>
+        <span id="campus-status-text">🟢 الحرم الجامعي: نشط وآمن</span>
         <span id="live-speedometer" style="color: var(--primary-color);">⚡ السرعة: 0 كم/س</span>
     </div>
 
-    <div id="control-panel">
-        <button class="control-btn" onclick="fetchLocationsData()" title="تحديث البيانات أونلاين">🔄 تحديث أونلاين</button>
-        <button class="control-btn" id="lang-toggle-btn" onclick="toggleLanguage()">العربية / English</button>
-        <select class="control-select" id="theme-selector" onchange="changeTheme(this.value)">
-            <option value="light">Light Mode</option>
-            <option value="dark">Dark Mode</option>
-        </select>
+    <!-- قائمة الإعدادات (تضم التحديث، اللغة، والوضع) على شكل 3 نقاط / زر إعدادات -->
+    <div id="settings-menu-container">
+        <button class="menu-toggle-btn" onclick="toggleSettingsMenu()">
+            <span id="settings-label">⚙️ إعدادات</span> <span>▼</span>
+        </button>
+        <div class="dropdown-panel" id="settings-dropdown">
+            <button class="control-btn" id="refresh-btn" onclick="triggerFullRefresh()">🔄 تحديث</button>
+            <select class="control-select" id="lang-selector" onchange="changeLanguage(this.value)">
+                <option value="ar">AR</option>
+                <option value="en">EN</option>
+            </select>
+            <select class="control-select" id="theme-selector" onchange="changeTheme(this.value)">
+                <option value="auto">🌓 تلقائي (Auto)</option>
+                <option value="light">☀️ Light</option>
+                <option value="dark">🌙 Dark</option>
+            </select>
+        </div>
     </div>
 
     <div id="sidebar">
-        <h3 id="sidebar-header" style="margin: 0; font-size: 0.95em;">Menoufia University GIS</h3>
+        <h3 id="sidebar-header" style="margin: 0; font-size: 0.95em;">جامعة المنوفية - الخريطة الذكية</h3>
         
+
+        <div class="sidebar-section" style="margin-top: 6px;">
+    <div class="sidebar-header-toggle" onclick="toggleAccordion('floor-content')">
+        <span id="floor-header-text">🏢 فلتر الطوابق الداخلي</span><span id="floor-arrow">▼</span>
+    </div>
+    <div id="floor-content" class="sidebar-content">
+        <select id="floor-filter-select" class="nav-select" onchange="filterByFloor(this.value)">
+            <option value="all">🌐 جميع الطوابق والمقرات</option>
+            <option value="الطابق الأرضي">الطابق الأرضي (Ground Floor)</option>
+            <option value="الطابق الأول">الطابق الأول (First Floor)</option>
+            <option value="الطابق الثاني">الطابق الثاني (Second Floor)</option>
+            <option value="الطابق الرابع">الطابق الرابع (Fourth Floor)</option>
+        </select>
+    </div>
+</div>
+
+
         <div class="sidebar-section">
             <div class="sidebar-header-toggle" onclick="toggleAccordion('nav-content')">
-                <span>🧭 التوجيه الحي ومقياس السرعة</span>
-                <span>▼</span>
+                <span id="nav-header-text">🧭 التوجيه الحي ومقياس السرعة</span><span id="nav-arrow">▼</span>
             </div>
-            <div id="nav-content" class="sidebar-content">
-                <select id="start-loc" class="nav-select">
-                    <option value="gps">📍 موقعي الحالي (GPS)</option>
-                </select>
-                <select id="end-loc" class="nav-select">
-                    <option value="">اختر الوجهة داخل الجامعة...</option>
-                </select>
+            <div id="nav-content" class="sidebar-content collapsed">
+                <select id="start-loc" class="nav-select"><option value="gps">📍 موقعي الحالي (GPS مباشر)</option></select>
+                <select id="end-loc" class="nav-select"><option value="">اختر الوجهة (نقطة النهاية)...</option></select>
                 <select id="transport-mode" class="nav-mode-select">
                     <option value="walk">🚶‍♂️ سير على الأقدام</option>
                     <option value="bike">🚲 دراجة بخارية</option>
                     <option value="car">🚗 قيادة سيارة</option>
                 </select>
+                
                 <div class="nav-actions">
                     <button class="nav-btn" id="nav-btn" onclick="startLiveNavigation()">ابدأ التوجيه</button>
                     <button class="nav-btn exit-nav-btn" id="exit-nav-btn" onclick="stopLiveNavigation()" style="display:none;">إيقاف</button>
-                    <button class="nav-btn whatsapp-share-btn" onclick="shareRouteWhatsApp()" title="مشاركة واتساب">💬 واتساب</button>
+                    <button class="nav-btn whatsapp-share-btn" id="whatsapp-btn" onclick="shareRouteWhatsApp()">💬 واتساب</button>
                 </div>
-                <div id="route-info">اختر الوجهة وابدأ التنقل</div>
+
+                <div class="nav-actions" style="margin-top: 4px;">
+                    <button class="nav-btn parking-btn" id="park-btn" onclick="toggleParkingLocation()">🅿️ حفظ مكان السيارة</button>
+                </div>
+                <div class="nav-actions" style="margin-top: 4px;">
+    <button class="nav-btn" style="background-color: #7c3aed !important;" onclick="openAddPlaceModal()">➕ اقتراح / إضافة مكان</button>
+</div>
+
+<!-- Modal نموذج إضافة مكان -->
+<div id="add-place-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+    <div style="background:var(--panel-bg); padding:20px; border-radius:12px; width:320px; box-shadow:0 4px 20px var(--shadow-color); display:flex; flex-direction:column; gap:8px;">
+        <h4 style="margin:0 0 10px 0; color:var(--primary-color);">إضافة موقع جديد بالحرم</h4>
+        <input type="text" id="new-name-ar" placeholder="اسم المكان بالعربية" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
+        <input type="text" id="new-name-en" placeholder="اسم المكان بالإنجليزية" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
+        <select id="new-category" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
+            <option value="إدارة">إدارة</option>
+            <option value="كليات">كليات</option>
+            <option value="خدمات">خدمات</option>
+            <option value="أقسام أكاديمية">أقسام أكاديمية</option>
+            <option value="معامل متخصصة">معامل متخصصة</option>
+        </select>
+        <input type="text" id="new-details" placeholder="تفاصيل مختصرة" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
+        <div style="font-size:0.75em; color:var(--primary-color);">📍 سيتم استخدام إحداثيات موقعك الحالي (GPS) تلقائياً.</div>
+        <div style="display:flex; gap:6px; margin-top:10px;">
+            <button onclick="submitNewPlace()" style="flex:1; background:#16a34a; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;">إرسال وحفظ</button>
+            <button onclick="closeAddPlaceModal()" style="flex:1; background:#dc2626; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<div class="nav-actions" style="margin-top: 6px;">
+    <button class="nav-btn" style="background-color: #0284c7 !important;" onclick="printRouteReport()">🖨️ طباعة تقرير المسار / PDF</button>
+</div>  
+                <div id="route-info">اختر نقطة البداية والوجهة وابدأ التنقل</div>
             </div>
         </div>
 
         <div class="sidebar-section">
             <div class="sidebar-header-toggle" onclick="toggleAccordion('dir-content')">
-                <span>🏢 دليل الكليات والمقرات</span>
-                <span>▼</span>
+                <span id="dir-header-text">🏢 دليل الكليات والمقرات</span><span id="dir-arrow">▼</span>
             </div>
-            <div id="dir-content" class="sidebar-content">
+            <div id="dir-content" class="sidebar-content collapsed">
                 <input type="text" id="search-input" placeholder="بحث سريع بداخل الجامعة..." onkeyup="filterLocations(this.value)">
                 <div id="locations-list"></div>
             </div>
         </div>
     </div>
 
-    <div id="map-layers-widget">
-        <button class="layer-btn active" onclick="switchMapLayer('streets', this)">🗺️ الشوارع</button>
-        <button class="layer-btn" onclick="switchMapLayer('satellite', this)">🛰️ قمر صناعي</button>
-        <button class="layer-btn" onclick="switchMapLayer('terrain', this)">⛰️ تضاريس</button>
+    <!-- قائمة الطبقات المنسدلة (Layers) -->
+    <div id="map-layers-container">
+        <button class="menu-toggle-btn" onclick="toggleLayersMenu()">
+            <span id="layers-menu-label">🗺️ طبقات الخريطة</span> <span>▲</span>
+        </button>
+        <div class="layers-dropdown-panel" id="layers-dropdown">
+            <button class="layer-btn active" id="btn-layer-streets" onclick="switchMapLayer('streets', this)">🗺️ الشوارع</button>
+            <button class="layer-btn" id="btn-layer-satellite" onclick="switchMapLayer('satellite', this)">🛰️ قمر صناعي</button>
+            <button class="layer-btn" id="btn-layer-terrain" onclick="switchMapLayer('terrain', this)">⛰️ تضاريس</button>
+        </div>
     </div>
 
-    <div id="compass-widget" onclick="recenterAndCalibrateCompass()" title="موقعي الحالي">
-        <span id="compass-icon">🧭 N</span>
-    </div>
-    
+    <div id="compass-widget" onclick="recenterAndCalibrateCompass()" title="موقعي الحالي">🧭</div>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script>
         let currentLang = 'ar';
-        let map;
-        let markersLayer = L.layerGroup();
-        let routeLayer = L.layerGroup();
-        let allLocationsData = [];
-        let userLocationMarker = null;
-        let userCoords = { lat: 30.5578, lng: 31.0130, speed: 0 };
-        let isNavigating = false;
-        let activeDestination = null;
-        let tileLayers = {};
+        let map, markersLayer = L.layerGroup(), routeLayer = L.layerGroup(), parkingLayer = L.layerGroup();
+        let allLocationsData = [], userLocationMarker = null, parkingMarker = null;
+        let userCoords = { lat: 30.5578, lng: 31.0130, speed: 0, heading: 0 };
+        let isNavigating = false, activeStart = null, activeDestination = null, tileLayers = {};
+        let parkedLocation = null;
+        let hasAlertedArrival = false;
+
+        const i18n = {
+            ar: {
+                title: "جامعة المنوفية - الخريطة الذكية", refresh: "🔄 تحديث", weatherPrefix: "☀️ طقس طنطا: ",
+                campusStatus: "🟢 الحرم الجامعي: نشط وآمن", speedometer: "⚡ السرعة: ",
+                settingsText: "⚙️ إعدادات", layersText: "🗺️ طبقات الخريطة",
+                navHeader: "🧭 التوجيه الحي ومقياس السرعة", gpsLoc: "📍 موقعي الحالي (GPS مباشر)",
+                selectStart: "اختر نقطة البداية...", selectDest: "اختر الوجهة (نقطة النهاية)...", 
+                walk: "🚶‍♂️ سير على الأقدام", bike: "🚲 دراجة بخارية", car: "🚗 قيادة سيارة",
+                startNav: "ابدأ التوجيه", stopNav: "إيقاف", whatsapp: "💬 واتساب", 
+                parkSave: "🅿️ حفظ مكان السيارة", parkRemove: "🚗 مغادرة البركنج",
+                routePrompt: "اختر نقطة البداية والوجهة وابدأ التنقل",
+                dirHeader: "🏢 دليل الكليات والمقرات", searchPlaceholder: "بحث سريع بداخل الجامعة...",
+                layerStreets: "🗺️ الشوارع", layerSatellite: "🛰️ قمر صناعي", layerTerrain: "⛰️ تضاريس",
+                code: "🏢 الكود: ", buildingName: "🏛️ المبنى: ", floor: "📍 الطابق: ", category: "🏷️ الفئة: ",
+                iso: "✨ الاعتماد: ", details: "📝 التفاصيل: ", noDetails: "لا توجد تفاصيل إضافية.",
+                arrivedMsg: "🎉 لقد وصلت إلى وجهتك المطلوبة بنجاح!",
+                feedbackPrompt: "كيف تقييم سلاسة الطريق والتوجيه اليوم؟",
+                parkSavedMsg: "🅿️ تم حفظ مكان ركن السيارة بنجاح! لن يتم حذفه حتى تؤكد مغادرتك.",
+                parkClearedMsg: "🚗 تم مسح مكان البركنج. نتمنى لك رحلة آمنة!"
+            },
+            en: {
+                title: "Menoufia University - Smart GIS", refresh: "🔄 Refresh", weatherPrefix: "☀️ Tanta Weather: ",
+                campusStatus: "🟢 Campus: Active & Safe", speedometer: "⚡ Speed: ",
+                navHeader: "🧭 Live Navigation & Speedometer", gpsLoc: "📍 My Current Location (Live GPS)",
+                settingsText: "⚙️ Settings", layersText: "🗺️ Map Layers",
+                selectStart: "Select starting point...", selectDest: "Select destination...", 
+                walk: "🚶‍♂️ Walking", bike: "🚲 Motorbike", car: "🚗 Driving",
+                startNav: "Start Route", stopNav: "Stop", whatsapp: "💬 WhatsApp", 
+                parkSave: "🅿️ Save Parking Spot", parkRemove: "🚗 Leave Parking",
+                routePrompt: "Select start & destination to begin navigation",
+                dirHeader: "🏢 Faculty & Offices Directory", searchPlaceholder: "Quick campus search...",
+                layerStreets: "🗺️ Streets", layerSatellite: "🛰️ Satellite", layerTerrain: "⛰️ Terrain",
+                code: "🏢 Code: ", buildingName: "🏛️ Building: ", floor: "📍 Floor: ", category: "🏷️ Category: ",
+                iso: "✨ Accreditation: ", details: "📝 Details: ", noDetails: "No additional details.",
+                arrivedMsg: "🎉 You have arrived at your destination successfully!",
+                feedbackPrompt: "How would you rate today's route smoothness and navigation?",
+                parkSavedMsg: "🅿️ Parking spot saved successfully! It will remain until you confirm leaving.",
+                parkClearedMsg: "🚗 Parking spot cleared. Have a safe trip!"
+            }
+        };
+
+        let currentTempVal = 20;
 
         function initMap() {
             map = L.map('map', { maxZoom: 22, zoomControl: true }).setView([30.5578, 31.0130], 17);
-
-            tileLayers['streets'] = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 22, maxNativeZoom: 19, attribution: '© OpenStreetMap'
-            });
-
-            tileLayers['satellite'] = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 22, maxNativeZoom: 19, attribution: 'Tiles © Esri'
-            });
-
-            tileLayers['terrain'] = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-                maxZoom: 22, maxNativeZoom: 17, attribution: '© OpenTopoMap'
-            });
-
-            tileLayers['streets'].addTo(map);
+            tileLayers['streets'] = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 22, maxNativeZoom: 19 }).addTo(map);
+            tileLayers['satellite'] = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 22, maxNativeZoom: 19 });
+            tileLayers['terrain'] = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 22, maxNativeZoom: 17 });
+            
             markersLayer.addTo(map);
             routeLayer.addTo(map);
+            parkingLayer.addTo(map);
 
             fetchLocationsData();
-            initLiveGPSAndCompass();
-            fetchDynamicWeather(30.5578, 31.0130); // جلب الطقس الديناميكي لمنطقة طنطا
+            initLiveGPSNavigation();
+            fetchDynamicWeather(30.5578, 31.0130);
         }
 
-        // دالة جلب الطقس الحقيقي الديناميكي أونلاين
+
+        function filterByFloor(floorVal) {
+    if (floorVal === 'all') {
+        renderMapMarkers(allLocationsData);
+        renderSidebarList(allLocationsData);
+        return;
+    }
+
+    const filtered = allLocationsData.filter(loc => {
+        return loc.floor_level_ar.includes(floorVal) || loc.floor_level_en.toLowerCase().includes(floorVal.toLowerCase());
+    });
+
+    renderMapMarkers(filtered);
+    renderSidebarList(filtered);
+}
+
+
+        function toggleSettingsMenu() {
+            document.getElementById('settings-dropdown').classList.toggle('show');
+            document.getElementById('layers-dropdown').classList.remove('show'); // إغلاق الطبقات لو مفتوحة
+        }
+
+        function toggleLayersMenu() {
+            document.getElementById('layers-dropdown').classList.toggle('show');
+            document.getElementById('settings-dropdown').classList.remove('show'); // إغلاق الإعدادات لو مفتوحة
+        }
+
+        // إغلاق القوائم عند النقر خارجها
+        window.onclick = function(event) {
+            if (!event.target.closest('#settings-menu-container')) {
+                document.getElementById('settings-dropdown').classList.remove('show');
+            }
+            if (!event.target.closest('#map-layers-container')) {
+                document.getElementById('layers-dropdown').classList.remove('show');
+            }
+        }
+
+        function triggerFullRefresh() {
+            setTimeout(() => { location.reload(); }, 400);
+        }
+
         function fetchDynamicWeather(lat, lng) {
-            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
-            fetch(weatherUrl)
-                .then(response => response.json())
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`)
+                .then(res => res.json())
                 .then(data => {
                     if (data && data.current_weather) {
-                        const temp = Math.round(data.current_weather.temperature);
-                        const weatherText = currentLang === 'ar' ? `☀️ طقس طنطا: ${temp}°C` : `☀️ Tanta Weather: ${temp}°C`;
-                        document.getElementById('weather-display').textContent = weatherText;
+                        currentTempVal = Math.round(data.current_weather.temperature);
+                        updateWeatherDisplay();
                     }
-                })
-                .catch(err => console.log("Weather notice:", err));
+                }).catch(e => console.log(e));
         }
 
-        function switchMapLayer(layerKey, btnElement) {
-            Object.keys(tileLayers).forEach(k => {
-                if (map.hasLayer(tileLayers[k])) map.removeLayer(tileLayers[k]);
-            });
-            tileLayers[layerKey].addTo(map);
+        function updateWeatherDisplay() {
+            document.getElementById('weather-display').textContent = `${i18n[currentLang].weatherPrefix}${currentTempVal}°C`;
+        }
+
+        function switchMapLayer(key, btn) {
+            Object.keys(tileLayers).forEach(k => map.hasLayer(tileLayers[k]) && map.removeLayer(tileLayers[k]));
+            tileLayers[key].addTo(map);
             document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
-            btnElement.classList.add('active');
+            btn.classList.add('active');
+            document.getElementById('layers-dropdown').classList.remove('show');
         }
 
         function toggleAccordion(id) {
-            document.getElementById(id).classList.toggle('collapsed');
+            const content = document.getElementById(id);
+            content.classList.toggle('collapsed');
         }
 
         function fetchLocationsData() {
             fetch('/api/locations')
-                .then(response => response.json())
+                .then(res => res.json())
                 .then(data => {
                     allLocationsData = data;
                     renderMapMarkers(data);
                     renderSidebarList(data);
                     populateRoutingDropdowns(data);
-                })
-                .catch(error => console.error('Error fetching data:', error));
+                });
         }
 
         function populateRoutingDropdowns(locations) {
             const startSelect = document.getElementById('start-loc');
             const endSelect = document.getElementById('end-loc');
-            
-            startSelect.innerHTML = `<option value="gps">📍 موقعي الحالي (GPS)</option>`;
-            endSelect.innerHTML = `<option value="">اختر الوجهة داخل الجامعة...</option>`;
+            startSelect.innerHTML = `<option value="gps">${i18n[currentLang].gpsLoc}</option>`;
+            endSelect.innerHTML = `<option value="">${i18n[currentLang].selectDest}</option>`;
 
             locations.forEach((loc, index) => {
-                if (loc.lat && loc.lng) {
-                    let name = currentLang === 'ar' ? (loc.building_name_ar || loc.building_name) : (loc.building_name_en || loc.building_name);
-                    let section = currentLang === 'ar' ? (loc.section_office_ar || loc.section_office) : (loc.section_office_en || loc.section_office);
+                let displayName = currentLang === 'ar' ? loc.display_name_ar : loc.display_name_en;
+                let buildingName = currentLang === 'ar' ? loc.building_name_ar : loc.building_name_en;
 
-                    let optStart = document.createElement('option');
-                    optStart.value = index;
-                    optStart.textContent = `${name} (${section || loc.category})`;
-                    startSelect.appendChild(optStart);
+                let opt1 = document.createElement('option');
+                opt1.value = index;
+                opt1.textContent = `${displayName} (${buildingName})`;
+                startSelect.appendChild(opt1);
 
-                    let optEnd = document.createElement('option');
-                    optEnd.value = index;
-                    optEnd.textContent = `${name} (${section || loc.category})`;
-                    endSelect.appendChild(optEnd);
-                }
+                let opt2 = document.createElement('option');
+                opt2.value = index;
+                opt2.textContent = `${displayName} (${buildingName})`;
+                endSelect.appendChild(opt2);
             });
+
+            const tSelect = document.getElementById('transport-mode');
+            tSelect.options[0].text = i18n[currentLang].walk;
+            tSelect.options[1].text = i18n[currentLang].bike;
+            tSelect.options[2].text = i18n[currentLang].car;
         }
 
-        // رسم الدبابيس وإعادة صياغة النافذة المنبثقة (Popup) بإظهار تفاصيل موسعة وغنية
+
+        function printRouteReport() {
+    const endSelect = document.getElementById('end-loc');
+    if (endSelect.value === "") {
+        alert(currentLang === 'ar' ? "⚠️ يرجى اختيار وجهة أولاً لطباعة التقرير!" : "⚠️ Select a destination first!");
+        return;
+    }
+    const destName = endSelect.options[endSelect.selectedIndex].text;
+    const routeInfoText = document.getElementById('route-info').innerText;
+    const currentDate = new Date().toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
+
+    // إنشاء نافذة طباعة منسقة رسمياً
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html dir="${currentLang === 'ar' ? 'rtl' : 'ltr'}">
+        <head>
+            <title>تقرير التوجيه المكاني - جامعة المنوفية</title>
+            <style>
+                body { font-family: 'Cairo', Arial, sans-serif; padding: 20px; color: #111; }
+                h2 { color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
+                .box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px; margin-top: 15px; }
+                .footer { margin-top: 30px; font-size: 0.85em; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; pt: 10px; }
+            </style>
+        </head>
+        <body>
+            <h2>جامعة المنوفية - نظام الجغرافيا المكاني (Menoufia GIS)</h2>
+            <p><strong>تاريخ التقرير:</strong> ${currentDate}</p>
+            <div class="box">
+                <h3>📍 تفاصيل الوجهة:</h3>
+                <p><strong>الوجهة المطلوبة:</strong> ${destName}</p>
+                <p><strong>بيانات المسار:</strong> ${routeInfoText}</p>
+            </div>
+            <div class="footer">
+                تم استخراج هذا التقرير إلكترونياً من نظام الجغرافيا المكاني لجامعة المنوفية - جميع الحقوق محفوظة.
+            </div>
+            <script>
+                window.onload = function() { window.print(); window.close(); }
+            <\/script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+
         function renderMapMarkers(locations) {
             markersLayer.clearLayers();
             locations.forEach(loc => {
-                if (loc.lat && loc.lng) {
-                    let color = loc.color || '#2563eb';
-                    let displayName = currentLang === 'ar' ? (loc.building_name_ar || loc.building_name) : (loc.building_name_en || loc.building_name);
+                let displayName = currentLang === 'ar' ? loc.display_name_ar : loc.display_name_en;
+                let buildingName = currentLang === 'ar' ? loc.building_name_ar : loc.building_name_en;
+                let floorName = currentLang === 'ar' ? loc.floor_level_ar : loc.floor_level_en;
+                let detailsText = currentLang === 'ar' ? loc.details_ar : loc.details_en;
 
-                    const pinIcon = L.divIcon({
-                        className: 'custom-3d-pin',
-                        html: `<div style="background-color: ${color}; width: 18px; height: 18px; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 8px; color: white;">🏢</div>`,
-                        iconSize: [18, 18],
-                        iconAnchor: [9, 9]
-                    });
-
-                    const popupHtml = `
-                        <div style="direction: ${currentLang === 'ar' ? 'rtl' : 'ltr'}; text-align: ${currentLang === 'ar' ? 'right' : 'left'}; min-width: 220px; font-family: 'Cairo', sans-serif;">
-                            <h4 style="margin: 0 0 8px 0; color: var(--primary-color); font-size: 1.05em; border-bottom: 2px solid var(--border-color); padding-bottom: 4px;">${displayName}</h4>
-                            <p style="margin: 4px 0; font-size: 0.85em;"><strong>🏢 الكود:</strong> ${loc.building_id || 'N/A'}</p>
-                            <p style="margin: 4px 0; font-size: 0.85em;"><strong>📌 القسم/المكتب:</strong> ${currentLang === 'ar' ? (loc.section_office_ar || loc.section_office) : (loc.section_office_en || loc.section_office) || 'N/A'}</p>
-                            <p style="margin: 4px 0; font-size: 0.85em;"><strong>📍 الطابق:</strong> ${currentLang === 'ar' ? (loc.floor_level_ar || loc.floor_level) : (loc.floor_level_en || loc.floor_level) || 'N/A'}</p>
-                            <p style="margin: 4px 0; font-size: 0.85em;"><strong>🏷️ الفئة:</strong> ${loc.category || 'Academic'}</p>
-                            <p style="margin: 4px 0; font-size: 0.85em;"><strong>✨ حالة الاعتماد:</strong> <span style="color: #16a34a; font-weight: bold;">${loc.iso_status || 'N/A'}</span></p>
-                            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color); font-size: 0.8em; opacity: 0.9;">
-                                <strong>📝 التفاصيل:</strong> ${currentLang === 'ar' ? (loc.details_ar || 'لا توجد تفاصيل إضافية مسجلة.') : (loc.details_en || 'No additional details available.')}
-                            </div>
+                const popupHtml = `
+                    <div dir="${currentLang === 'ar' ? 'rtl' : 'ltr'}" style="text-align: start; min-width: 220px;">
+                        <h4 style="margin: 0 0 8px 0; color: var(--primary-color); font-size: 1.05em; border-bottom: 2px solid var(--border-color); padding-bottom: 4px;">${displayName}</h4>
+                        <p style="margin: 4px 0; font-size: 0.85em;"><strong>${i18n[currentLang].code}</strong> ${loc.building_id || 'N/A'}</p>
+                        <p style="margin: 4px 0; font-size: 0.85em;"><strong>${i18n[currentLang].buildingName}</strong> ${buildingName || 'N/A'}</p>
+                        <p style="margin: 4px 0; font-size: 0.85em;"><strong>${i18n[currentLang].floor}</strong> ${floorName || 'N/A'}</p>
+                        <p style="margin: 4px 0; font-size: 0.85em;"><strong>${i18n[currentLang].category}</strong> ${loc.category || 'Academic'}</p>
+                        <p style="margin: 4px 0; font-size: 0.85em;"><strong>${i18n[currentLang].iso}</strong> <span style="color: #16a34a; font-weight: bold;">${loc.iso_status || 'N/A'}</span></p>
+                        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color); font-size: 0.8em; opacity: 0.9;">
+                            <strong>${i18n[currentLang].details}</strong> ${detailsText || i18n[currentLang].noDetails}
                         </div>
-                    `;
+                    </div>
+                `;
 
-                    const marker = L.marker([loc.lat, loc.lng], { icon: pinIcon }).bindPopup(popupHtml);
-                    marker.bindTooltip(displayName, { permanent: true, direction: 'right', className: 'map-pin-label', offset: [8, 0] });
-                    markersLayer.addLayer(marker);
-                }
+                const pinElement = document.createElement('div');
+                pinElement.style.cssText = 'width: 18px; height: 18px; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 8px; color: white; cursor: pointer;';
+                pinElement.style.backgroundColor = loc.color;
+                pinElement.textContent = '🏢';
+                
+                // استخدام خاصية title القياسية لضمان ظهور اسم المكان فوراً عند تمرير المؤشر بشكل نظيف
+                pinElement.title = displayName;
+
+                const pinIcon = L.divIcon({
+                    className: 'custom-pin',
+                    html: pinElement,
+                    iconSize: [18, 18], iconAnchor: [9, 9]
+                });
+
+                const marker = L.marker([loc.lat, loc.lng], { icon: pinIcon }).bindPopup(popupHtml);
+                markersLayer.addLayer(marker);
             });
         }
-
         function renderSidebarList(locations) {
-            const listContainer = document.getElementById('locations-list');
-            listContainer.innerHTML = '';
-
+            const list = document.getElementById('locations-list'); list.innerHTML = '';
             locations.forEach(loc => {
-                if (loc.lat && loc.lng) {
-                    let displayName = currentLang === 'ar' ? (loc.building_name_ar || loc.building_name) : (loc.building_name_en || loc.building_name);
-                    const item = document.createElement('div');
-                    item.className = 'location-item';
-                    item.onclick = () => { map.flyTo([loc.lat, loc.lng], 19, { animate: true, duration: 1.5 }); };
-                    item.innerHTML = `<div class="loc-title">${displayName}</div>`;
-                    listContainer.appendChild(item);
-                }
+                let displayName = currentLang === 'ar' ? loc.display_name_ar : loc.display_name_en;
+                let buildingName = currentLang === 'ar' ? loc.building_name_ar : loc.building_name_en;
+
+                const item = document.createElement('div');
+                item.className = 'location-item';
+                item.onclick = () => map.flyTo([loc.lat, loc.lng], 19, { animate: true });
+                item.innerHTML = `
+                    <div class="loc-title">${displayName}</div>
+                    <div class="loc-subtitle">🏛️ ${buildingName}</div>
+                `;
+                list.appendChild(item);
             });
         }
 
-        function startLiveNavigation() {
-            const startVal = document.getElementById('start-loc').value;
-            const endVal = document.getElementById('end-loc').value;
-            const infoDiv = document.getElementById('route-info');
+        function changeLanguage(lang) {
+            currentLang = lang;
+            const root = document.getElementById('html-root');
+            root.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
+            root.setAttribute('lang', currentLang);
 
-            if (endVal === "") {
-                infoDiv.textContent = currentLang === 'ar' ? "⚠️ اختر الوجهة أولاً!" : "⚠️ Select destination!";
-                return;
-            }
+            const t = i18n[currentLang];
+            document.getElementById('sidebar-header').textContent = t.title;
+            document.getElementById('refresh-btn').textContent = t.refresh;
+            document.getElementById('campus-status-text').textContent = t.campusStatus;
+            document.getElementById('settings-label').textContent = t.settingsText;
+            document.getElementById('layers-menu-label').textContent = t.layersText;
+            document.getElementById('nav-header-text').textContent = t.navHeader;
+            document.getElementById('nav-btn').textContent = t.startNav;
+            document.getElementById('exit-nav-btn').textContent = t.stopNav;
+            document.getElementById('whatsapp-btn').textContent = t.whatsapp;
+            document.getElementById('park-btn').textContent = parkedLocation ? t.parkRemove : t.parkSave;
+            document.getElementById('route-info').textContent = t.routePrompt;
+            document.getElementById('dir-header-text').textContent = t.dirHeader;
+            document.getElementById('search-input').placeholder = t.searchPlaceholder;
+            document.getElementById('btn-layer-streets').textContent = t.layerStreets;
+            document.getElementById('btn-layer-satellite').textContent = t.layerSatellite;
+            document.getElementById('btn-layer-terrain').textContent = t.layerTerrain;
+            document.getElementById('live-speedometer').textContent = `${t.speedometer}${userCoords.speed} ${currentLang === 'ar' ? 'كم/س' : 'km/h'}`;
 
-            activeDestination = allLocationsData[endVal];
-            let startLat, startLng;
-            if (startVal === "gps") {
-                startLat = userCoords.lat;
-                startLng = userCoords.lng;
-            } else {
-                const startLoc = allLocationsData[startVal];
-                startLat = startLoc.lat;
-                startLng = startLoc.lng;
-            }
-
-            isNavigating = true;
-            document.getElementById('nav-btn').style.display = 'none';
-            document.getElementById('exit-nav-btn').style.display = 'block';
-
-            updateLiveRoute(startLat, startLng, activeDestination.lat, activeDestination.lng);
-        }
-
-        function updateLiveRoute(sLat, sLng, dLat, dLng) {
-            if (!isNavigating) return;
-
-            routeLayer.clearLayers();
-            const latlngs = [[sLat, sLng], [dLat, dLng]];
-            const mode = document.getElementById('transport-mode').value;
-            let color = '#2563eb';
-            if (mode === 'car') color = '#dc2626';
-            else if (mode === 'bike') color = '#16a34a';
-
-            const routeLine = L.polyline(latlngs, {
-                color: color, weight: 6, opacity: 0.85, dashArray: '8, 8', lineCap: 'round'
-            }).addTo(routeLayer);
-
-            const R = 6371e3;
-            const φ1 = sLat * Math.PI/180;
-            const φ2 = dLat * Math.PI/180;
-            const Δφ = (dLat - sLat) * Math.PI/180;
-            const Δλ = (dLng - sLng) * Math.PI/180;
-
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            const distanceMeters = Math.round(R * c);
-
-            let speedMetersPerMin = 80;
-            if (mode === 'bike') speedMetersPerMin = 250;
-            if (mode === 'car') speedMetersPerMin = 500;
-
-            if (distanceMeters <= 20) {
-                alert(currentLang === 'ar' ? "🎉 لقد وصلت إلى وجهتك المطلوبة!" : "🎉 You have arrived at your destination!");
-                stopLiveNavigation();
-                return;
-            }
-
-            const timeMins = Math.max(1, Math.ceil(distanceMeters / speedMetersPerMin));
-            const infoDiv = document.getElementById('route-info');
-            infoDiv.innerHTML = `
-                <div>🚀 المسافة: ${distanceMeters >= 1000 ? (distanceMeters/1000).toFixed(1) + ' كم' : distanceMeters + ' متر'}</div>
-                <div>⏱️ الوقت المقدر: ${timeMins} دقيقة (${mode})</div>
-            `;
-
-            map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
-        }
-
-        function shareRouteWhatsApp() {
-            const endVal = document.getElementById('end-loc').value;
-            if (endVal === "") {
-                alert(currentLang === 'ar' ? "اختر الوجهة أولاً لمشاركتها عبر واتساب!" : "Select destination first!");
-                return;
-            }
-            const destName = document.getElementById('end-loc').options[document.getElementById('end-loc').selectedIndex].text;
-            const text = encodeURIComponent(`📌 مسار التوجيه الجامعي المعتمد إلى: *${destName}* عبر نظام جامعة المنوفية الذكي 📍\nرابط الخريطة: ${window.location.href}`);
-            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-        }
-
-        function stopLiveNavigation() {
-            isNavigating = false;
-            activeDestination = null;
-            routeLayer.clearLayers();
-            document.getElementById('nav-btn').style.display = 'block';
-            document.getElementById('exit-nav-btn').style.display = 'none';
-            document.getElementById('route-info').textContent = currentLang === 'ar' ? "اختر الوجهة وابدأ التنقل" : "Select destination & start";
-        }
-
-        function initLiveGPSAndCompass() {
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(
-                    (position) => {
-                        userCoords.lat = position.coords.latitude;
-                        userCoords.lng = position.coords.longitude;
-                        
-                        if (position.coords.speed !== null && position.coords.speed >= 0) {
-                            userCoords.speed = Math.round(position.coords.speed * 3.6);
-                            document.getElementById('live-speedometer').textContent = `⚡ السرعة: ${userCoords.speed} كم/س`;
-                        }
-                        
-                        if (!userLocationMarker) {
-                            const userIcon = L.divIcon({
-                                className: 'user-gps-pin',
-                                html: `<div style="background-color: #22c55e; width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 0 10px rgba(34,197,94,0.9);"></div>`,
-                                iconSize: [16, 16],
-                                iconAnchor: [8, 8]
-                            });
-                            userLocationMarker = L.marker([userCoords.lat, userCoords.lng], { icon: userIcon }).addTo(map);
-                        } else {
-                            userLocationMarker.setLatLng([userCoords.lat, userCoords.lng]);
-                        }
-
-                        if (isNavigating && activeDestination) {
-                            updateLiveRoute(userCoords.lat, userCoords.lng, activeDestination.lat, activeDestination.lng);
-                        }
-                    },
-                    (error) => { console.warn("GPS Notice: ", error.message); },
-                    { enableHighAccuracy: true, maximumAge: 1000 }
-                );
-            }
-        }
-
-        function recenterAndCalibrateCompass() {
-            map.flyTo([userCoords.lat, userCoords.lng], 19, { animate: true, duration: 1 });
-        }
-
-        function filterLocations(query) {
-            const lowerQ = query.toLowerCase();
-            const filtered = allLocationsData.filter(loc => 
-                (loc.building_name_ar && loc.building_name_ar.toLowerCase().includes(lowerQ)) ||
-                (loc.building_name_en && loc.building_name_en.toLowerCase().includes(lowerQ)) ||
-                (loc.section_office_ar && loc.section_office_ar.toLowerCase().includes(lowerQ))
-            );
-            renderMapMarkers(filtered);
-            renderSidebarList(filtered);
-        }
-
-        function toggleLanguage() {
-            currentLang = currentLang === 'en' ? 'ar' : 'en';
-            const htmlRoot = document.getElementById('html-root');
-            htmlRoot.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
-            htmlRoot.setAttribute('lang', currentLang);
+            updateWeatherDisplay();
             renderMapMarkers(allLocationsData);
             renderSidebarList(allLocationsData);
             populateRoutingDropdowns(allLocationsData);
         }
 
-        function changeTheme(theme) {
-            document.body.setAttribute('data-theme', theme);
-            localStorage.setItem('campus_theme', theme);
+        function initLiveGPSNavigation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    (pos) => {
+                        userCoords.lat = pos.coords.latitude;
+                        userCoords.lng = pos.coords.longitude;
+                        if (pos.coords.speed !== null && pos.coords.speed >= 0) {
+                            userCoords.speed = Math.round(pos.coords.speed * 3.6);
+                        }
+                        if (pos.coords.heading !== null) {
+                            userCoords.heading = pos.coords.heading;
+                        }
+
+                        document.getElementById('live-speedometer').textContent = `${i18n[currentLang].speedometer}${userCoords.speed} ${currentLang === 'ar' ? 'كم/س' : 'km/h'}`;
+
+                        const userIcon = L.divIcon({
+                            className: 'user-gps-pin',
+                            html: '<div style="background-color: #22c55e; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px rgba(34,197,94,0.9); transform: rotate(' + userCoords.heading + 'deg);"></div>',
+                            iconSize: [20, 20], iconAnchor: [10, 10]
+                        });
+
+                        if (!userLocationMarker) {
+                            userLocationMarker = L.marker([userCoords.lat, userCoords.lng], { icon: userIcon }).addTo(map);
+                        } else {
+                            userLocationMarker.setLatLng([userCoords.lat, userCoords.lng]);
+                        }
+
+                        if (isNavigating && activeStart === 'gps' && activeDestination) {
+                            updateLiveRoute(userCoords.lat, userCoords.lng, activeDestination.lat, activeDestination.lng);
+                        }
+                    },
+                    (err) => { console.log("GPS Notice."); },
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+                );
+            }
         }
 
+        function recenterAndCalibrateCompass() {
+            if (userCoords.lat && userCoords.lng) {
+                map.flyTo([userCoords.lat, userCoords.lng], 19, { animate: true, duration: 1 });
+            } else {
+                map.flyTo([30.5578, 31.0130], 18, { animate: true, duration: 1 });
+            }
+        }
+
+        function toggleParkingLocation() {
+            const t = i18n[currentLang];
+            if (!parkedLocation) {
+                parkedLocation = { lat: userCoords.lat, lng: userCoords.lng };
+                parkingLayer.clearLayers();
+
+                const parkIcon = L.divIcon({
+                    className: 'parking-pin',
+                    html: `<div style="background-color: #d97706; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px rgba(217,119,6,0.9); display: flex; align-items: center; justify-content: center; font-size: 12px; color: white;">🅿️</div>`,
+                    iconSize: [24, 24], iconAnchor: [12, 12]
+                });
+
+                const parkMarker = L.marker([parkedLocation.lat, parkedLocation.lng], { icon: parkIcon })
+                    .bindPopup(`<b>${currentLang === 'ar' ? 'مكان ركن السيارة المحفوظ' : 'Saved Parking Spot'}</b>`);
+                parkingLayer.addLayer(parkMarker);
+
+                document.getElementById('park-btn').textContent = t.parkRemove;
+                alert(t.parkSavedMsg);
+            } else {
+                if (confirm(currentLang === 'ar' ? "هل تؤكد مغادرة مكان ركن السيارة والتحرك بعربيتك؟" : "Confirm leaving your parking spot?")) {
+                    parkedLocation = null;
+                    parkingLayer.clearLayers();
+                    document.getElementById('park-btn').textContent = t.parkSave;
+                    alert(t.parkClearedMsg);
+                }
+            }
+        }
+
+        function startLiveNavigation() {
+            const startVal = document.getElementById('start-loc').value;
+            const endVal = document.getElementById('end-loc').value;
+
+            if (endVal === "") { alert(currentLang === 'ar' ? "⚠️ اختر الوجهة أولاً!" : "⚠️ Select destination!"); return; }
+            if (startVal === endVal) { alert(currentLang === 'ar' ? "⚠️ نقطة البداية لا يمكن أن تكون نفس الوجهة!" : "⚠️ Start and destination cannot be the same!"); return; }
+
+            activeStart = startVal;
+            activeDestination = allLocationsData[endVal];
+            isNavigating = true;
+            hasAlertedArrival = false;
+
+            let sLat, sLng;
+            if (startVal === 'gps') {
+                sLat = userCoords.lat;
+                sLng = userCoords.lng;
+            } else {
+                sLat = allLocationsData[startVal].lat;
+                sLng = allLocationsData[startVal].lng;
+            }
+
+            document.getElementById('nav-btn').style.display = 'none';
+            document.getElementById('exit-nav-btn').style.display = 'block';
+
+            updateLiveRoute(sLat, sLng, activeDestination.lat, activeDestination.lng);
+        }
+
+        function playBeepSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = 880;
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch (e) { console.log(e); }
+        }
+
+        function formatTimeDuration(totalMinutes) {
+            if (totalMinutes < 1) return currentLang === 'ar' ? 'أقل من دقيقة' : 'Less than a min';
+            const hours = Math.floor(totalMinutes / 60);
+            const mins = Math.round(totalMinutes % 60);
+
+            if (currentLang === 'ar') {
+                if (hours > 0 && mins > 0) return `${hours} ساعة و ${mins} دقيقة`;
+                if (hours > 0) return `${hours} ساعة`;
+                return `${mins} دقيقة`;
+            } else {
+                if (hours > 0 && mins > 0) return `${hours} hr ${mins} min`;
+                if (hours > 0) return `${hours} hr`;
+                return `${mins} min`;
+            }
+        }
+
+        function openAddPlaceModal() {
+    document.getElementById('add-place-modal').style.display = 'flex';
+}
+function closeAddPlaceModal() {
+    document.getElementById('add-place-modal').style.display = 'none';
+}
+
+function submitNewPlace() {
+    const nameAr = document.getElementById('new-name-ar').value;
+    const nameEn = document.getElementById('new-name-en').value;
+    const category = document.getElementById('new-category').value;
+    const details = document.getElementById('new-details').value;
+
+    if (!nameAr) {
+        alert("يرجى إدخال اسم المكان على الأقل!");
+        return;
+    }
+
+    const payload = {
+        building_id: "MNF-USER-" + Math.floor(Math.random() * 1000),
+        building_name_ar: nameAr,
+        building_name_en: nameEn || nameAr,
+        floor_level_ar: "الطابق الأرضي",
+        floor_level_en: "Ground Floor",
+        section_office_ar: nameAr,
+        section_office_en: nameEn || nameAr,
+        latitude: userCoords.lat || 30.5578,
+        longitude: userCoords.lng || 31.0130,
+        category: category,
+        iso_status: "Not Applicable",
+        details_ar: details || "موقع مضاف بواسطة المستخدم.",
+        details_en: details || "User added location."
+    };
+
+    fetch('/api/add-location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("✅ تم إضافة وحفظ المكان بنجاح وتحديث الخريطة!");
+            closeAddPlaceModal();
+            triggerFullRefresh(); // إعادة تحميل الخريطة لتظهر النقطة فوراً
+        } else {
+            alert("❌ حدث خطأ أثناء الحفظ.");
+        }
+    }).catch(err => console.log(err));
+}
+
+        function updateLiveRoute(sLat, sLng, dLat, dLng) {
+            if (!isNavigating) return;
+            routeLayer.clearLayers();
+            const routeLine = L.polyline([[sLat, sLng], [dLat, dLng]], { color: '#2563eb', weight: 6, opacity: 0.85, dashArray: '8, 8' }).addTo(routeLayer);
+            
+            const rawDist = map.distance([sLat, sLng], [dLat, dLng]);
+            const dist = Math.round(rawDist * 1.25);
+            
+            const mode = document.getElementById('transport-mode').value;
+            let speedMetersPerMin = 80;
+            if (mode === 'bike') speedMetersPerMin = 250;
+            if (mode === 'car') speedMetersPerMin = 400;
+
+            const totalMins = dist / speedMetersPerMin;
+            const timeFormatted = formatTimeDuration(totalMins);
+
+            if (dist <= 15 && !hasAlertedArrival) {
+                hasAlertedArrival = true;
+                playBeepSound();
+                alert(i18n[currentLang].arrivedMsg);
+                setTimeout(() => {
+                    prompt(i18n[currentLang].feedbackPrompt);
+                    stopLiveNavigation();
+                }, 500);
+                return;
+            }
+
+            let directionTip = currentLang === 'ar' ? "⬆️ استمر للأمام مباشرة باتجاه الوجهة" : "⬆️ Continue straight towards destination";
+            if (dist > 100) {
+                directionTip = currentLang === 'ar' ? "➡️ اتبع مسار الشارع الرئيسي داخل الحرم" : "➡️ Follow main campus road";
+            } else {
+                directionTip = currentLang === 'ar' ? "⚠️ اقتربت جداً من الوجهة، استعد للتوقف" : "⚠️ Approaching destination, prepare to stop";
+            }
+
+            document.getElementById('route-info').innerHTML = `
+                <div>🚀 ${currentLang === 'ar' ? 'المسافة:' : 'Distance:'} ${dist >= 1000 ? (dist/1000).toFixed(1) + (currentLang === 'ar' ? ' كم' : ' km') : dist + (currentLang === 'ar' ? ' متر' : ' m')} | ⏱️ ${timeFormatted}</div>
+                <div style="color: #dc2626; margin-top: 2px;">${directionTip}</div>
+            `;
+
+            map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
+        }
+
+        function stopLiveNavigation() {
+            isNavigating = false; activeStart = null; activeDestination = null; routeLayer.clearLayers();
+            document.getElementById('nav-btn').style.display = 'block';
+            document.getElementById('exit-nav-btn').style.display = 'none';
+            document.getElementById('route-info').textContent = i18n[currentLang].routePrompt;
+        }
+
+        function shareRouteWhatsApp() {
+            const endVal = document.getElementById('end-loc').value;
+            if (endVal === "") { alert(currentLang === 'ar' ? "اختر الوجهة أولاً!" : "Select destination!"); return; }
+            const destName = document.getElementById('end-loc').options[document.getElementById('end-loc').selectedIndex].text;
+            const text = encodeURIComponent(`📌 ${currentLang === 'ar' ? 'مسار التوجيه الجامعي المعتمد إلى:' : 'Official campus route to:'} *${destName}*\n📍 ${window.location.href}`);
+            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+        }
+
+        function filterLocations(query) {
+            const q = query.toLowerCase();
+            const filtered = allLocationsData.filter(loc => {
+                let title = currentLang === 'ar' ? loc.display_name_ar : loc.display_name_en;
+                let building = currentLang === 'ar' ? loc.building_name_ar : loc.building_name_en;
+                return title.toLowerCase().includes(q) || building.toLowerCase().includes(q);
+            });
+            renderMapMarkers(filtered);
+            renderSidebarList(filtered);
+        }
+
+        function changeTheme(theme) {
+    let activeTheme = theme;
+    if (theme === 'auto') {
+        // التحقق من إعدادات النظام أو التوقيت المحلي (مثلاً بعد 6 مساءً وقبل 6 صباحاً يعتبر ليلاً)
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const currentHour = new Date().getHours();
+        const isNight = currentHour < 6 || currentHour >= 18;
+        
+        activeTheme = (prefersDark || isNight) ? 'dark' : 'light';
+    }
+    
+    document.body.setAttribute('data-theme', activeTheme);
+    localStorage.setItem('theme', theme); // حفظ الاختيار (auto, light, dark)
+}
+
+// الاستماع لتغيير إعدادات النظام فوراً إذا كان الوضع Auto مفعلًا
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (localStorage.getItem('theme') === 'auto') {
+        changeTheme('auto');
+    }
+});
+
         window.onload = function() {
-            const savedTheme = localStorage.getItem('campus_theme') || 'light';
+            initMap();
+            const savedTheme = localStorage.getItem('theme') || 'auto';
             document.getElementById('theme-selector').value = savedTheme;
             changeTheme(savedTheme);
-            initMap();
-        };
+        }   
     </script>
 </body>
 </html>
