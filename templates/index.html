@@ -16,11 +16,10 @@
             --border-color: #374151; --primary-color: #3b82f6; --shadow-color: rgba(0, 0, 0, 0.85);
         }
 
-        /* دعم الوضع المظلم لطبقة الشوارع تلقائياً */
-        [data-theme="dark"] .leaflet-tile-pane {
-        filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
-        }
-
+        /* كلاس خاص لتفعيل الوضع المظلم على الخريطة العادية فقط */
+.dark-streets-mode {
+    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
+}
         body { margin: 0; padding: 0; font-family: 'Cairo', 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-color); overflow: hidden; }
         #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
 
@@ -356,12 +355,42 @@
         }
 
         function switchMapLayer(key, btn) {
-            Object.keys(tileLayers).forEach(k => map.hasLayer(tileLayers[k]) && map.removeLayer(tileLayers[k]));
-            tileLayers[key].addTo(map);
-            document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            document.getElementById('layers-dropdown').classList.remove('show');
+    // إزالة جميع طبقات الخريطة الحالية من الخريطة بلطف
+    Object.keys(tileLayers).forEach(k => {
+        if (map.hasLayer(tileLayers[k])) {
+            map.removeLayer(tileLayers[k]);
         }
+    });
+
+    // إضافة الطبقة الجديدة المختارة فوراً
+    tileLayers[key].addTo(map);
+
+    // تطبيق فلتر الوضع المظلم إذا كانت الطبقة المختارة هي الشوارع (streets) أو التضاريس (terrain) وكان الوضع ليلياً
+    const currentThemeBody = document.body.getAttribute('data-theme');
+    
+    // فحص حاوية الطبقة النشطة (سواء شوارع أو تضاريس)
+    const activeLayerObj = tileLayers[key];
+    if (activeLayerObj) {
+        try {
+            const tileContainer = activeLayerObj.getContainer();
+            if (tileContainer) {
+                // تطبيق الفلتر على الشوارع والتضاريس معاً، واستثنائه تماماً للقمر الصناعي (satellite)
+                if ((key === 'streets' || key === 'terrain') && currentThemeBody === 'dark') {
+                    tileContainer.classList.add('dark-streets-mode');
+                } else {
+                    tileContainer.classList.remove('dark-streets-mode');
+                }
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    }
+
+    // تحديث الأزرار النشطة وإغلاق القائمة المنسدلة بضغطة واحدة
+    document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('layers-dropdown').classList.remove('show');
+}
 
         function toggleAccordion(id) {
             const content = document.getElementById(id);
@@ -799,6 +828,13 @@ function submitNewPlace() {
         
         activeTheme = (prefersDark || isNight) ? 'dark' : 'light';
     }
+    // داخل دالة changeTheme وبعد تحديد activeTheme:
+if (activeTheme === 'dark' && map.hasLayer(tileLayers['streets'])) {
+    tileLayers['streets'].getContainer().classList.add('dark-streets-mode');
+} else if (tileLayers['streets']) {
+    tileLayers['streets'].getContainer().classList.remove('dark-streets-mode');
+}
+
     
     document.body.setAttribute('data-theme', activeTheme);
     localStorage.setItem('theme', theme); // حفظ الاختيار (auto, light, dark)
