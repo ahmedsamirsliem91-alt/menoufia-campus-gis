@@ -1,132 +1,115 @@
-# -*- coding: utf-8 -*-
-"""
-=============================================================================
-محرك الخلفية المستقر لتوجيه المسارات والترجمة الحية (app.py)
-المشروع: نظام نظم المعلومات الجغرافية التفاعلي لجامعة المنوفية (Campus GIS)
-المؤلف: م. أحمد سمير سليم
-=============================================================================
-"""
-
 import os
+from flask import Flask, render_template, jsonify
 import pandas as pd
 from flask import Flask, render_template, jsonify, request
-import arabic_reshaper
-from bidi.algorithm import get_display
-
 app = Flask(__name__)
 
-EXCEL_FILE_NAME = "campus_database.xlsx"
-
-def format_terminal_text(text):
-    """إصلاح وتشكيل النصوص العربية للتيرمنال."""
-    try:
-        reshaped = arabic_reshaper.reshape(text)
-        return get_display(reshaped)
-    except Exception:
-        return text
-
-def load_campus_data():
-    """قراءة بيانات الإكسيل المحلي بأمان تام وضمان عدم فقدان أي نقطة جغرافية."""
-    if not os.path.exists(EXCEL_FILE_NAME):
-        print(format_terminal_text("❌ ملف الإكسيل غير موجود في مسار المشروع!"))
-        return []
-    try:
-        temp_file = "temp_active_db.xlsx"
-        with open(EXCEL_FILE_NAME, 'rb') as src, open(temp_file, 'wb') as dst:
-            dst.write(src.read())
-            
-        df = pd.read_excel(temp_file, sheet_name=0)
-        
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
-            
-        df = df.fillna('')
-        print(format_terminal_text(f"✔ تم تحميل {len(df)} موقعاً جغرافياً بنجاح من قاعدة البيانات."))
-        return df.to_dict(orient='records')
-    except Exception as e:
-        print(format_terminal_text(f"❌ خطأ في قراءة ملف الإكسيل: {e}"))
-        return []
-
-def dynamic_translate(arabic_text):
-    """محرك ترجمة ديناميكي ذكي يحول المصطلحات الأكاديمية والجغرافية تلقائياً."""
-    if not arabic_text:
-        return ""
-    
-    text = str(arabic_text).strip()
-    
-    replacements = {
-        "جامعة المنوفية": "Menoufia University",
-        "كلية": "Faculty of",
-        "قسم": "Department of",
-        "مبنى": "Building",
-        "مختبر": "Laboratory",
-        "قاعة": "Hall",
-        "مكتب": "Office",
-        "مسجد": "Mosque",
-        "مسرح": "Theatre",
-        "بوابة": "Gate",
-        "مدينة الطلبة": "Student Dormitories",
-        "مركز الخدمة العامة": "Public Service Center",
-        "كافتريا": "Cafeteria",
-        "أول": "1st", "ثاني": "2nd", "ثالث": "3rd", "أرضي": "Ground Level"
+def get_category_color(category):
+    cat = str(category).strip()
+    # تخصيص لون تلقائي جذاب حسب الفئة
+    color_map = {
+        "إدارة": "#2563eb",         # أزرق
+        "كليات": "#16a34a",         # أخضر
+        "خدمات": "#d97706",        # برتقالي
+        "أقسام أكاديمية": "#7c3aed", # بنفسجي
+        "معامل متخصصة": "#dc2626", # أحمر
+        "ورش ومعامل": "#0891b2",    # تركواز
+        "قاعات": "#4f46e5",        # نيلي
+        "مكتبات": "#059669",       # أخضر زمردي
+        "بوابات": "#57534e"        # رمادي داكن
     }
-    
-    translated = text
-    for ar, en in replacements.items():
-        translated = translated.replace(ar, en)
-        
-    return translated
+    return color_map.get(cat, "#2563eb") # اللون الافتراضي أزرق
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/api/locations')
-def get_locations():
-    """API يوفر كافة المواقع المسجلة للجامعة بدقة عالية."""
-    data = load_campus_data()
-    processed_data = []
-    
-    for item in data:
-        ar_name = item.get('Building_Name', '')
-        ar_sec = item.get('Section_Or_Office', '')
-        ar_floor = str(item.get('Floor_Level', ''))
-        ar_details = item.get('Details_Arabic', '')
+@app.route('/api/add-location', methods=['POST'])
+def add_location():
+    excel_path = 'campus_database.xlsx'
+    try:
+        data = request.json
+        xls = pd.ExcelFile(excel_path)
+        df = pd.read_excel(xls, sheet_name=xls.sheet_names[0])
         
-        lat_val = item.get('Latitude')
-        lng_val = item.get('Longitude')
+        # إنشاء صف جديد بالمفاتيح المطابقة لأعمدة الإكسل
+        new_row = {
+            'Building_ID': data.get('building_id'),
+            'Building_Name_ar': data.get('building_name_ar'),
+            'Building_Name_en': data.get('building_name_en'),
+            'Floor_Level_ar': data.get('floor_level_ar'),
+            'Floor_Level_en': data.get('floor_level_en'),
+            'Section_Or_Office_ar': data.get('section_office_ar'),
+            'Section_Or_Office_en': data.get('section_office_en'),
+            'Latitude': data.get('latitude'),
+            'Longitude': data.get('longitude'),
+            'Category': data.get('category'),
+            'ISO_17025_Status': data.get('iso_status'),
+            'Details_ar': data.get('details_ar'),
+            'Details_en': data.get('details_en')
+        }
         
-        try:
-            lat = float(lat_val) if lat_val else None
-            lng = float(lng_val) if lng_val else None
-        except (ValueError, TypeError):
-            lat, lng = None, None
-
-        if lat and lng:
-            processed_data.append({
-                'building_id': item.get('Building_ID', 'MNF-CAMPUS'),
-                'building_name_ar': ar_name,
-                'building_name_en': dynamic_translate(ar_name),
-                'floor_level_ar': ar_floor,
-                'floor_level_en': dynamic_translate(ar_floor),
-                'section_office_ar': ar_sec,
-                'section_office_en': dynamic_translate(ar_sec),
-                'lat': lat,
-                'lng': lng,
-                'category': item.get('Category', 'Academic'),
-                'iso_status': item.get('ISO_17025_Status', 'N/A'),
-                'details_ar': ar_details,
-                'details_en': dynamic_translate(ar_details) or "Campus location details available."
-            })
+        # إلحاق الصف الجديد بـ DataFrame وحفظه في نفس ملف الإكسل
+        df_new = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        with pd.ExcelWriter(excel_path, engine='openpyxl', mode='w') as writer:
+            df_new.to_excel(writer, sheet_name=xls.sheet_names[0], index=False)
             
-    return jsonify(processed_data)
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error adding location: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/locations', methods=['GET'])
+def get_locations():
+    excel_path = 'campus_database.xlsx'
+    if not os.path.exists(excel_path):
+        return jsonify([])
+
+    try:
+        xls = pd.ExcelFile(excel_path)
+        df = pd.read_excel(xls, sheet_name=xls.sheet_names[0])
+        df = df.fillna('')
+        df.columns = [str(col).strip() for col in df.columns]
+        
+        locations = []
+        for _, row in df.iterrows():
+            row_dict = row.to_dict()
+            
+            lat = float(row_dict.get('Latitude', row_dict.get('lat', 30.5578)))
+            lng = float(row_dict.get('Longitude', row_dict.get('lng', 31.0130)))
+            category = str(row_dict.get('Category', 'Academic'))
+            
+            loc = {
+                "lat": lat,
+                "lng": lng,
+                "building_id": str(row_dict.get('Building_ID', 'N/A')),
+                "display_name_ar": str(row_dict.get('Section_Or_Office_ar', row_dict.get('Building_Name_ar', 'موقع'))),
+                "display_name_en": str(row_dict.get('Section_Or_Office_en', row_dict.get('Building_Name_en', 'Location'))),
+                "building_name_ar": str(row_dict.get('Building_Name_ar', '')),
+                "building_name_en": str(row_dict.get('Building_Name_en', '')),
+                "floor_level_ar": str(row_dict.get('Floor_Level_ar', '')),
+                "floor_level_en": str(row_dict.get('Floor_Level_en', '')),
+                "section_office_ar": str(row_dict.get('Section_Or_Office_ar', '')),
+                "section_office_en": str(row_dict.get('Section_Or_Office_en', '')),
+                "category": category,
+                "iso_status": str(row_dict.get('ISO_17025_Status', 'Not Applicable')),
+                "details_ar": str(row_dict.get('Details_ar', '')),
+                "details_en": str(row_dict.get('Details_en', '')),
+                "color": get_category_color(category) # تعيين اللون تلقائياً حسب الفئة
+            }
+            locations.append(loc)
+
+        return jsonify(locations)
+    except Exception as e:
+        print(f"Error processing Excel: {e}")
+        return jsonify([])
 
 if __name__ == '__main__':
-    print(format_terminal_text("=== سيرفر خريطة جامعة المنوفية الذكية يعمل الآن باستقرار تام ==="))
-    print("http://127.0.0.1:5000")
-    app.run(debug=True, port=5000)
-
-if __name__ == '__main__':
-    import os
-    port = int(os.environ.get("PORT", 7860))
-    app.run(host="0.0.0.0", port=port)    
+    port = int(os.environ.get("PORT", 5000))
+    if port == 5000:
+        print("=== Menoufia University Smart GIS Server Running Locally ===")
+        print("URL: http://127.0.0.1:5000")
+        app.run(debug=True, host="127.0.0.1", port=5000)
+    else:
+        print("=== Menoufia University Smart GIS Server Running on Hugging Face ===")
+        app.run(host="0.0.0.0", port=port)
