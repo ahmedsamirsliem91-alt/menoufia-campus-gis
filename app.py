@@ -125,3 +125,8 @@ if __name__ == '__main__':
     print(format_terminal_text("=== سيرفر خريطة جامعة المنوفية الذكية يعمل الآن باستقرار تام ==="))
     print("http://127.0.0.1:5000")
     app.run(debug=True, port=5000)
+
+if __name__ == '__main__':
+    import os
+    port = int(os.environ.get("PORT", 7860))
+    app.run(host="0.0.0.0", port=port)    
