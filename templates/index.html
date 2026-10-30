@@ -6,6 +6,7 @@
     <title id="page-title">نظام الجغرافيا المكاني لجامعة المنوفية | Menoufia GIS</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/static/manifest.json">
     <style>
         :root {
             --bg-color: #f1f5f9; --text-color: #0f172a; --panel-bg: #ffffff;
@@ -17,9 +18,9 @@
         }
 
         /* كلاس خاص لتفعيل الوضع المظلم على الخريطة العادية فقط */
-.dark-streets-mode {
-    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
-}
+        .dark-streets-mode {
+            filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
+        }
         body { margin: 0; padding: 0; font-family: 'Cairo', 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-color); overflow: hidden; }
         #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
 
@@ -44,8 +45,148 @@
         }
         [data-theme="dark"] select.control-select { background: #111827; color: #f8fafc; }
 
-        /* القائمة الجانبية */
-        #sidebar { position: absolute; top: 75px; left: 10px; z-index: 1000; background: var(--panel-bg); padding: 12px; border-radius: 12px; box-shadow: 0 4px 20px var(--shadow-color); border: 1px solid var(--border-color); width: 260px; max-height: 75vh; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+
+        /* 📱 تحسينات جذريّة لشاشات الموبايل */
+        @media screen and (max-width: 768px) {
+            #sidebar {
+                width: calc(100vw - 24px) !important;
+                left: 12px !important;
+                top: 65px !important;
+                max-height: 45vh !important;
+                padding: 8px !important;
+            }
+            #campus-status-overlay {
+                top: auto !important;
+                bottom: 70px !important;
+                left: 10px !important;
+                right: 10px !important;
+                font-size: 0.7em !important;
+                padding: 5px 8px !important;
+                justify-content: space-around !important;
+            }
+            #map-layers-container {
+                bottom: 15px !important;
+                left: 10px !important;
+            }
+            #compass-widget {
+                bottom: 15px !important;
+                right: 10px !important;
+                width: 42px !important;
+                height: 42px !important;
+            }
+        }
+
+
+       /* زر القائمة العائم للموبايل في مكان منفصل وآمن */
+    #mobile-menu-fab {
+        display: none; 
+        position: absolute;
+        top: 100px;
+        right: 330px; /* بجانب زر الإعدادات دون تداخل */
+        z-index: 1002;
+        background: var(--panel-bg);
+        color: var(--primary-color);
+        border: 1px solid var(--border-color);
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-weight: bold;
+        box-shadow: 0 4px 20px var(--shadow-color);
+        cursor: pointer;
+        font-size: 0.85em;
+        align-items: center;
+        gap: 6px;
+    }
+
+
+/* 📱 تخصيص الأزرار العائمة على الموبايل لتكون رموزاً فقط (Icons Only) */
+        @media screen and (max-width: 768px) {
+            /* زر الإعدادات: إخفاء كلمة إعدادات وإظهار الترس فقط */
+            #settings-menu-container .menu-toggle-btn span:first-child {
+                display: none !important;
+            }
+            #settings-menu-container .menu-toggle-btn {
+                padding: 10px !important;
+                border-radius: 50% !important;
+                width: 45px !important;
+                height: 45px !important;
+                justify-content: center !important;
+            }
+
+            /* زر القائمة العائم: تحويله إلى 3 شرط (☰) */
+            #mobile-menu-fab {
+                display: flex !important;
+                padding: 10px !important;
+                border-radius: 50% !important;
+                width: 45px !important;
+                height: 45px !important;
+                justify-content: center !important;
+                top: 75px !important;
+                right: 310px !important; /* بجانب الإعدادات بمسافة آمنة */
+            }
+            #mobile-menu-fab .fab-text {
+                display: none !important; /* إخفاء النص على الموبايل */
+            }
+
+            /* زر طبقات الخريطة: إخفاء النص وإظهار الأيقونة فقط */
+            #map-layers-container .menu-toggle-btn span:first-child {
+                display: none !important;
+            }
+            #map-layers-container .menu-toggle-btn {
+                padding: 10px !important;
+                border-radius: 50% !important;
+                width: 45px !important;
+                height: 45px !important;
+                justify-content: center !important;
+            }
+        }
+
+    /* تعديلات شاشات الموبايل (حتى 768 بكسل) */
+    @media screen and (max-width: 768px) {
+        #mobile-menu-fab {
+            display: flex !important; /* يظهر على الموبايل فقط */
+        }
+        #sidebar {
+            position: fixed !important;
+            top: 70px !important;
+            left: 10px !important;
+            right: 10px !important;
+            width: auto !important;
+            max-height: 70vh !important;
+            display: none !important; /* مخفي افتراضياً على الموبايل لتظهر الخريطة صافية */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+            z-index: 2000 !important;
+        }
+        #sidebar.mobile-open {
+            display: flex !important; /* يظهر فقط عند الضغط على زر القائمة العائم */
+        }
+        #campus-status-overlay {
+            top: auto !important;
+            bottom: 75px !important;
+            left: 10px !important;
+            right: 10px !important;
+            font-size: 0.7em !important;
+            padding: 5px 8px !important;
+            justify-content: space-around !important;
+        }
+        #map-layers-container {
+            bottom: 15px !important;
+            left: 10px !important;
+        }
+        #compass-widget {
+            bottom: 15px !important;
+            right: 10px !important;
+            width: 42px !important;
+            height: 42px !important;
+        }
+    }
+
+        /* القائمة الجانبية (متجاوبة مع الموبايل) */
+        #sidebar { 
+            position: absolute; top: 75px; left: 10px; z-index: 1000; 
+            background: var(--panel-bg); padding: 12px; border-radius: 12px; 
+            box-shadow: 0 4px 20px var(--shadow-color); border: 1px solid var(--border-color); 
+            width: 260px; max-height: 75vh; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; 
+        }
         .sidebar-section { border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: var(--bg-color); }
         .sidebar-header-toggle { padding: 6px 10px; font-size: 0.75em; font-weight: bold; background: var(--panel-bg); color: var(--primary-color); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .sidebar-content { padding: 8px; display: flex; flex-direction: column; gap: 5px; }
@@ -62,7 +203,13 @@
         .location-item { padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--panel-bg); cursor: pointer; }
         .loc-title { font-weight: 600; font-size: 0.75em; color: var(--primary-color); }
         .loc-subtitle { font-size: 0.65em; opacity: 0.8; }
-        #campus-status-overlay { position: absolute; top: 10px; left: 50px; z-index: 999; background: var(--panel-bg); padding: 6px 14px; border-radius: 8px; box-shadow: 0 4px 15px var(--shadow-color); border: 1px solid var(--border-color); font-size: 0.8em; display: flex; align-items: center; gap: 12px; font-weight: 600; }
+        
+        #campus-status-overlay { 
+            position: absolute; top: 10px; left: 50px; z-index: 999; 
+            background: var(--panel-bg); padding: 6px 14px; border-radius: 8px; 
+            box-shadow: 0 4px 15px var(--shadow-color); border: 1px solid var(--border-color); 
+            font-size: 0.8em; display: flex; align-items: center; gap: 12px; font-weight: 600; 
+        }
         
         /* قائمة الطبقات المنسدلة (أسفل اليسار) */
         #map-layers-container { position: absolute; bottom: 10px; left: 15px; z-index: 1000; }
@@ -76,33 +223,76 @@
         .layer-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
 
         #compass-widget { position: absolute; bottom: 10px; right: 15px; z-index: 1000; background: var(--panel-bg); border: 2px solid var(--border-color); border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--primary-color); font-weight: bold; }
-        /* تنسيق احترافي للمربع والسهم السفلي الخاص به */
 
-        
+        /* تثبيت التولتيب بدقة فوق الدبوس مباشرة دون أي إزاحة */
+        .leaflet-tooltip.map-pin-label {
+            position: absolute !important;
+            margin-top: -35px !important;
+            transform: translateX(-50%) !important;
+            background: var(--panel-bg) !important;
+            color: var(--text-color) !important;
+            border: 1px solid var(--border-color) !important;
+            padding: 3px 8px !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            border-radius: 6px !important;
+            box-shadow: 0 4px 15px var(--shadow-color) !important;
+            white-space: nowrap !important;
+        }
+        .leaflet-tooltip.map-pin-label::before { display: none !important; }
 
+        /* تصميم النافذة الترحيبية */
+        #onboarding-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.6); z-index: 3000; align-items: center; justify-content: center;
+        }
+        .onboarding-card {
+            background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color);
+            padding: 25px; border-radius: 16px; width: 340px; max-width: 90vw;
+            box-shadow: 0 10px 30px var(--shadow-color); text-align: center; display: flex; flex-direction: column; gap: 12px;
+        }
+        .onboarding-card h3 { color: var(--primary-color); margin: 0; font-size: 1.2em; }
+        .onboarding-card p { font-size: 0.85em; opacity: 0.9; margin: 0; line-height: 1.5; }
+        .onboarding-btn {
+            background: var(--primary-color); color: white; border: none; padding: 10px;
+            border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9em; margin-top: 5px;
+        }
 
-    /* تثبيت التولتيب بدقة فوق الدبوس مباشرة دون أي إزاحة */
-.leaflet-tooltip.map-pin-label {
-    position: absolute !important;
-    margin-top: -35px !important;
-    transform: translateX(-50%) !important;
-    background: var(--panel-bg) !important;
-    color: var(--text-color) !important;
-    border: 1px solid var(--border-color) !important;
-    padding: 3px 8px !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    border-radius: 6px !important;
-    box-shadow: 0 4px 15px var(--shadow-color) !important;
-    white-space: nowrap !important;
-}
-/* إخفاء السهم الافتراضي لمنع التداخل */
-.leaflet-tooltip.map-pin-label::before {
-    display: none !important;
-}
+        /* 📱 تحسينات الشاشات الصغيرة والموبايل (Responsive Design) */
+        @media screen and (max-width: 768px) {
+            #sidebar {
+                width: calc(100vw - 30px);
+                left: 15px;
+                top: 65px;
+                max-height: 55vh;
+            }
+            #campus-status-overlay {
+                top: auto;
+                bottom: 60px;
+                left: 15px;
+                right: 15px;
+                font-size: 0.7em;
+                justify-content: space-around;
+                padding: 6px 8px;
+            }
+            #settings-menu-container {
+                top: 10px;
+                right: 10px;
+            }
+        }
     </style>
 </head>
 <body data-theme="light">
+
+    <!-- النافذة الترحيبية للزوار الجدد (في مكانها الصحيح تماماً) -->
+    <div id="onboarding-modal">
+        <div class="onboarding-card">
+            <h3>🎓 أهلاً بك في خريطة جامعة المنوفية</h3>
+            <p>نظام الجغرافيا المكاني الذكي لمساعدتك في التنقل، تصفح المعامل المعتمدة ISO، وحفظ مكان سيارتك داخل الحرم الجامعي.</p>
+            <p style="font-size: 0.75em; color: var(--primary-color);">💡 يمكنك تثبيت التطبيق على هاتفك مباشرة من إعدادات المتصفح!</p>
+            <button class="onboarding-btn" onclick="closeOnboarding()">حسناً، ابدأ الاستخدام</button>
+        </div>
+    </div>
 
     <div id="campus-status-overlay">
         <span id="weather-display">☀️ طقس طنطا: جاري الجلب...</span>
@@ -110,10 +300,11 @@
         <span id="live-speedometer" style="color: var(--primary-color);">⚡ السرعة: 0 كم/س</span>
     </div>
 
-    <!-- قائمة الإعدادات (تضم التحديث، اللغة، والوضع) على شكل 3 نقاط / زر إعدادات -->
     <div id="settings-menu-container">
-        <button class="menu-toggle-btn" onclick="toggleSettingsMenu()">
-            <span id="settings-label">⚙️ إعدادات</span> <span>▼</span>
+        <button class="menu-toggle-btn" onclick="toggleSettingsMenu()" title="الإعدادات">
+            <span class="btn-text" id="settings-label">⚙️ إعدادات</span> 
+            <span class="btn-icon">⚙️</span>
+            <span class="btn-arrow">▼</span>
         </button>
         <div class="dropdown-panel" id="settings-dropdown">
             <button class="control-btn" id="refresh-btn" onclick="triggerFullRefresh()">🔄 تحديث</button>
@@ -129,25 +320,37 @@
         </div>
     </div>
 
+    <!-- زر القائمة العائم للموبايل (رمز ☰) -->
+    <button id="mobile-menu-fab" onclick="toggleMobileSidebar()" title="القائمة والوجهات">
+        <span class="fab-text">القائمة والوجهات</span> <span>☰</span>
+    </button>
+
+// إغلاق القائمة الجانبية للموبايل عند النقر على الخريطة مباشرة
+        map.on('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar.classList.contains('mobile-open')) {
+                sidebar.classList.remove('mobile-open');
+            }
+        });
     <div id="sidebar">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
         <h3 id="sidebar-header" style="margin: 0; font-size: 0.95em;">جامعة المنوفية - الخريطة الذكية</h3>
-        
-
+        <button onclick="toggleMobileSidebar()" style="background: none; border: none; font-size: 1.2em; cursor: pointer; color: var(--text-color); font-weight: bold;">✕</button>
+    </div>
         <div class="sidebar-section" style="margin-top: 6px;">
-    <div class="sidebar-header-toggle" onclick="toggleAccordion('floor-content')">
-        <span id="floor-header-text">🏢 فلتر الطوابق الداخلي</span><span id="floor-arrow">▼</span>
-    </div>
-    <div id="floor-content" class="sidebar-content">
-        <select id="floor-filter-select" class="nav-select" onchange="filterByFloor(this.value)">
-            <option value="all">🌐 جميع الطوابق والمقرات</option>
-            <option value="الطابق الأرضي">الطابق الأرضي (Ground Floor)</option>
-            <option value="الطابق الأول">الطابق الأول (First Floor)</option>
-            <option value="الطابق الثاني">الطابق الثاني (Second Floor)</option>
-            <option value="الطابق الرابع">الطابق الرابع (Fourth Floor)</option>
-        </select>
-    </div>
-</div>
-
+            <div class="sidebar-header-toggle" onclick="toggleAccordion('floor-content')">
+                <span id="floor-header-text">🏢 فلتر الطوابق الداخلي</span><span id="floor-arrow">▼</span>
+            </div>
+            <div id="floor-content" class="sidebar-content collapsed">
+                <select id="floor-filter-select" class="nav-select" onchange="filterByFloor(this.value)">
+                    <option value="all" id="opt-all">🌐 جميع الطوابق والمقرات</option>
+                    <option value="الطابق الأرضي" id="opt-ground">الطابق الأرضي (Ground Floor)</option>
+                    <option value="الطابق الأول" id="opt-first">الطابق الأول (First Floor)</option>
+                    <option value="الطابق الثاني" id="opt-second">الطابق الثاني (Second Floor)</option>
+                    <option value="الطابق الرابع" id="opt-fourth">الطابق الرابع (Fourth Floor)</option>
+                </select>
+            </div>
+        </div>
 
         <div class="sidebar-section">
             <div class="sidebar-header-toggle" onclick="toggleAccordion('nav-content')">
@@ -172,34 +375,37 @@
                     <button class="nav-btn parking-btn" id="park-btn" onclick="toggleParkingLocation()">🅿️ حفظ مكان السيارة</button>
                 </div>
                 <div class="nav-actions" style="margin-top: 4px;">
-    <button class="nav-btn" style="background-color: #7c3aed !important;" onclick="openAddPlaceModal()">➕ اقتراح / إضافة مكان</button>
-</div>
+                    <button class="nav-btn" style="background-color: #0284c7 !important;" onclick="forceRefreshGPS()">🎯 تحديث GPS الموبايل بدقة</button>
+                </div>
+                <div class="nav-actions" style="margin-top: 4px;">
+                    <button class="nav-btn" style="background-color: #7c3aed !important;" onclick="openAddPlaceModal()">➕ اقتراح / إضافة مكان</button>
+                </div>
 
-<!-- Modal نموذج إضافة مكان -->
-<div id="add-place-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
-    <div style="background:var(--panel-bg); padding:20px; border-radius:12px; width:320px; box-shadow:0 4px 20px var(--shadow-color); display:flex; flex-direction:column; gap:8px;">
-        <h4 style="margin:0 0 10px 0; color:var(--primary-color);">إضافة موقع جديد بالحرم</h4>
-        <input type="text" id="new-name-ar" placeholder="اسم المكان بالعربية" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
-        <input type="text" id="new-name-en" placeholder="اسم المكان بالإنجليزية" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
-        <select id="new-category" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
-            <option value="إدارة">إدارة</option>
-            <option value="كليات">كليات</option>
-            <option value="خدمات">خدمات</option>
-            <option value="أقسام أكاديمية">أقسام أكاديمية</option>
-            <option value="معامل متخصصة">معامل متخصصة</option>
-        </select>
-        <input type="text" id="new-details" placeholder="تفاصيل مختصرة" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
-        <div style="font-size:0.75em; color:var(--primary-color);">📍 سيتم استخدام إحداثيات موقعك الحالي (GPS) تلقائياً.</div>
-        <div style="display:flex; gap:6px; margin-top:10px;">
-            <button onclick="submitNewPlace()" style="flex:1; background:#16a34a; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;">إرسال وحفظ</button>
-            <button onclick="closeAddPlaceModal()" style="flex:1; background:#dc2626; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;">إلغاء</button>
-        </div>
-    </div>
-</div>
+                <!-- Modal نموذج إضافة مكان -->
+                <div id="add-place-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+                    <div style="background:var(--panel-bg); padding:20px; border-radius:12px; width:320px; box-shadow:0 4px 20px var(--shadow-color); display:flex; flex-direction:column; gap:8px;">
+                        <h4 style="margin:0 0 10px 0; color:var(--primary-color);">إضافة موقع جديد بالحرم</h4>
+                        <input type="text" id="new-name-ar" placeholder="اسم المكان بالعربية" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
+                        <input type="text" id="new-name-en" placeholder="اسم المكان بالإنجليزية" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
+                        <select id="new-category" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
+                            <option value="إدارة">إدارة</option>
+                            <option value="كليات">كليات</option>
+                            <option value="خدمات">خدمات</option>
+                            <option value="أقسام أكاديمية">أقسام أكاديمية</option>
+                            <option value="معامل متخصصة">معامل متخصصة</option>
+                        </select>
+                        <input type="text" id="new-details" placeholder="تفاصيل مختصرة" style="padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--panel-bg); color:var(--text-color);">
+                        <div style="font-size:0.75em; color:var(--primary-color);">📍 سيتم استخدام إحداثيات موقعك الحالي (GPS) تلقائياً.</div>
+                        <div style="display:flex; gap:6px; margin-top:10px;">
+                            <button onclick="submitNewPlace()" style="flex:1; background:#16a34a; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;">إرسال وحفظ</button>
+                            <button onclick="closeAddPlaceModal()" style="flex:1; background:#dc2626; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;">إلغاء</button>
+                        </div>
+                    </div>
+                </div>
 
-<div class="nav-actions" style="margin-top: 6px;">
-    <button class="nav-btn" style="background-color: #0284c7 !important;" onclick="printRouteReport()">🖨️ طباعة تقرير المسار / PDF</button>
-</div>  
+                <div class="nav-actions" style="margin-top: 6px;">
+                    <button class="nav-btn" style="background-color: #0284c7 !important;" onclick="printRouteReport()">🖨️ طباعة تقرير المسار / PDF</button>
+                </div>  
                 <div id="route-info">اختر نقطة البداية والوجهة وابدأ التنقل</div>
             </div>
         </div>
@@ -215,10 +421,12 @@
         </div>
     </div>
 
-    <!-- قائمة الطبقات المنسدلة (Layers) -->
+    <!-- قائمة الطبقات المنسدلة -->
     <div id="map-layers-container">
-        <button class="menu-toggle-btn" onclick="toggleLayersMenu()">
-            <span id="layers-menu-label">🗺️ طبقات الخريطة</span> <span>▲</span>
+        <button class="menu-toggle-btn" onclick="toggleLayersMenu()" title="طبقات الخريطة">
+            <span class="btn-text" id="layers-menu-label">🗺️ طبقات الخريطة</span> 
+            <span class="btn-icon">🗺️</span>
+            <span class="btn-arrow">▲</span>
         </button>
         <div class="layers-dropdown-panel" id="layers-dropdown">
             <button class="layer-btn active" id="btn-layer-streets" onclick="switchMapLayer('streets', this)">🗺️ الشوارع</button>
@@ -258,7 +466,13 @@
                 arrivedMsg: "🎉 لقد وصلت إلى وجهتك المطلوبة بنجاح!",
                 feedbackPrompt: "كيف تقييم سلاسة الطريق والتوجيه اليوم؟",
                 parkSavedMsg: "🅿️ تم حفظ مكان ركن السيارة بنجاح! لن يتم حذفه حتى تؤكد مغادرتك.",
-                parkClearedMsg: "🚗 تم مسح مكان البركنج. نتمنى لك رحلة آمنة!"
+                parkClearedMsg: "🚗 تم مسح مكان البركنج. نتمنى لك رحلة آمنة!",
+                floorHeader: "🏢 فلتر الطوابق الداخلي",
+                floorAll: "🌐 جميع الطوابق والمقرات",
+                floorGround: "الطابق الأرضي (Ground Floor)",
+                floorFirst: "الطابق الأول (First Floor)",
+                floorSecond: "الطابق الثاني (Second Floor)",
+                floorFourth: "الطابق الرابع (Fourth Floor)"
             },
             en: {
                 title: "Menoufia University - Smart GIS", refresh: "🔄 Refresh", weatherPrefix: "☀️ Tanta Weather: ",
@@ -277,7 +491,13 @@
                 arrivedMsg: "🎉 You have arrived at your destination successfully!",
                 feedbackPrompt: "How would you rate today's route smoothness and navigation?",
                 parkSavedMsg: "🅿️ Parking spot saved successfully! It will remain until you confirm leaving.",
-                parkClearedMsg: "🚗 Parking spot cleared. Have a safe trip!"
+                parkClearedMsg: "🚗 Parking spot cleared. Have a safe trip!",
+                floorHeader: "🏢 Indoor Floor Filter",
+                floorAll: "🌐 All Floors & Locations",
+                floorGround: "Ground Floor",
+                floorFirst: "First Floor",
+                floorSecond: "Second Floor",
+                floorFourth: "Fourth Floor"
             }
         };
 
@@ -296,36 +516,32 @@
             fetchLocationsData();
             initLiveGPSNavigation();
             fetchDynamicWeather(30.5578, 31.0130);
+            checkOnboarding();
         }
 
-
         function filterByFloor(floorVal) {
-    if (floorVal === 'all') {
-        renderMapMarkers(allLocationsData);
-        renderSidebarList(allLocationsData);
-        return;
-    }
-
-    const filtered = allLocationsData.filter(loc => {
-        return loc.floor_level_ar.includes(floorVal) || loc.floor_level_en.toLowerCase().includes(floorVal.toLowerCase());
-    });
-
-    renderMapMarkers(filtered);
-    renderSidebarList(filtered);
-}
-
+            if (floorVal === 'all') {
+                renderMapMarkers(allLocationsData);
+                renderSidebarList(allLocationsData);
+                return;
+            }
+            const filtered = allLocationsData.filter(loc => {
+                return loc.floor_level_ar.includes(floorVal) || loc.floor_level_en.toLowerCase().includes(floorVal.toLowerCase());
+            });
+            renderMapMarkers(filtered);
+            renderSidebarList(filtered);
+        }
 
         function toggleSettingsMenu() {
             document.getElementById('settings-dropdown').classList.toggle('show');
-            document.getElementById('layers-dropdown').classList.remove('show'); // إغلاق الطبقات لو مفتوحة
+            document.getElementById('layers-dropdown').classList.remove('show');
         }
 
         function toggleLayersMenu() {
             document.getElementById('layers-dropdown').classList.toggle('show');
-            document.getElementById('settings-dropdown').classList.remove('show'); // إغلاق الإعدادات لو مفتوحة
+            document.getElementById('settings-dropdown').classList.remove('show');
         }
 
-        // إغلاق القوائم عند النقر خارجها
         window.onclick = function(event) {
             if (!event.target.closest('#settings-menu-container')) {
                 document.getElementById('settings-dropdown').classList.remove('show');
@@ -355,42 +571,35 @@
         }
 
         function switchMapLayer(key, btn) {
-    // إزالة جميع طبقات الخريطة الحالية من الخريطة بلطف
-    Object.keys(tileLayers).forEach(k => {
-        if (map.hasLayer(tileLayers[k])) {
-            map.removeLayer(tileLayers[k]);
-        }
-    });
+            Object.keys(tileLayers).forEach(k => {
+                if (map.hasLayer(tileLayers[k])) {
+                    map.removeLayer(tileLayers[k]);
+                }
+            });
 
-    // إضافة الطبقة الجديدة المختارة فوراً
-    tileLayers[key].addTo(map);
+            tileLayers[key].addTo(map);
 
-    // تطبيق فلتر الوضع المظلم إذا كانت الطبقة المختارة هي الشوارع (streets) أو التضاريس (terrain) وكان الوضع ليلياً
-    const currentThemeBody = document.body.getAttribute('data-theme');
-    
-    // فحص حاوية الطبقة النشطة (سواء شوارع أو تضاريس)
-    const activeLayerObj = tileLayers[key];
-    if (activeLayerObj) {
-        try {
-            const tileContainer = activeLayerObj.getContainer();
-            if (tileContainer) {
-                // تطبيق الفلتر على الشوارع والتضاريس معاً، واستثنائه تماماً للقمر الصناعي (satellite)
-                if ((key === 'streets' || key === 'terrain') && currentThemeBody === 'dark') {
-                    tileContainer.classList.add('dark-streets-mode');
-                } else {
-                    tileContainer.classList.remove('dark-streets-mode');
+            const currentThemeBody = document.body.getAttribute('data-theme');
+            const activeLayerObj = tileLayers[key];
+            if (activeLayerObj) {
+                try {
+                    const tileContainer = activeLayerObj.getContainer();
+                    if (tileContainer) {
+                        if ((key === 'streets' || key === 'terrain') && currentThemeBody === 'dark') {
+                            tileContainer.classList.add('dark-streets-mode');
+                        } else {
+                            tileContainer.classList.remove('dark-streets-mode');
+                        }
+                    }
+                } catch (e) {
+                    console.log(e);
                 }
             }
-        } catch (e) {
-            console.log(e);
-        }
-    }
 
-    // تحديث الأزرار النشطة وإغلاق القائمة المنسدلة بضغطة واحدة
-    document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('layers-dropdown').classList.remove('show');
-}
+            document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('layers-dropdown').classList.remove('show');
+        }
 
         function toggleAccordion(id) {
             const content = document.getElementById(id);
@@ -402,9 +611,20 @@
                 .then(res => res.json())
                 .then(data => {
                     allLocationsData = data;
+                    localStorage.setItem('cached_locations', JSON.stringify(data));
                     renderMapMarkers(data);
                     renderSidebarList(data);
                     populateRoutingDropdowns(data);
+                })
+                .catch(err => {
+                    console.log("⚠️ تم فقد الاتصال، جاري تحميل البيانات من التخزين المؤقت المحلي...");
+                    const cached = localStorage.getItem('cached_locations');
+                    if (cached) {
+                        allLocationsData = JSON.parse(cached);
+                        renderMapMarkers(allLocationsData);
+                        renderSidebarList(allLocationsData);
+                        populateRoutingDropdowns(allLocationsData);
+                    }
                 });
         }
 
@@ -435,50 +655,59 @@
             tSelect.options[2].text = i18n[currentLang].car;
         }
 
-
         function printRouteReport() {
-    const endSelect = document.getElementById('end-loc');
-    if (endSelect.value === "") {
-        alert(currentLang === 'ar' ? "⚠️ يرجى اختيار وجهة أولاً لطباعة التقرير!" : "⚠️ Select a destination first!");
-        return;
-    }
-    const destName = endSelect.options[endSelect.selectedIndex].text;
-    const routeInfoText = document.getElementById('route-info').innerText;
-    const currentDate = new Date().toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
+            const endSelect = document.getElementById('end-loc');
+            if (endSelect.value === "") {
+                alert(currentLang === 'ar' ? "⚠️ يرجى اختيار وجهة أولاً لطباعة التقرير!" : "⚠️ Select a destination first!");
+                return;
+            }
+            const destName = endSelect.options[endSelect.selectedIndex].text;
+            const routeInfoText = document.getElementById('route-info').innerText;
+            const currentDate = new Date().toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
 
-    // إنشاء نافذة طباعة منسقة رسمياً
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <html dir="${currentLang === 'ar' ? 'rtl' : 'ltr'}">
-        <head>
-            <title>تقرير التوجيه المكاني - جامعة المنوفية</title>
-            <style>
-                body { font-family: 'Cairo', Arial, sans-serif; padding: 20px; color: #111; }
-                h2 { color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
-                .box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px; margin-top: 15px; }
-                .footer { margin-top: 30px; font-size: 0.85em; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; pt: 10px; }
-            </style>
-        </head>
-        <body>
-            <h2>جامعة المنوفية - نظام الجغرافيا المكاني (Menoufia GIS)</h2>
-            <p><strong>تاريخ التقرير:</strong> ${currentDate}</p>
-            <div class="box">
-                <h3>📍 تفاصيل الوجهة:</h3>
-                <p><strong>الوجهة المطلوبة:</strong> ${destName}</p>
-                <p><strong>بيانات المسار:</strong> ${routeInfoText}</p>
-            </div>
-            <div class="footer">
-                تم استخراج هذا التقرير إلكترونياً من نظام الجغرافيا المكاني لجامعة المنوفية - جميع الحقوق محفوظة.
-            </div>
-            <script>
-                window.onload = function() { window.print(); window.close(); }
-            <\/script>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
-}
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html dir="${currentLang === 'ar' ? 'rtl' : 'ltr'}">
+                <head>
+                    <title>تقرير التوجيه المكاني - جامعة المنوفية</title>
+                    <style>
+                        body { font-family: 'Cairo', Arial, sans-serif; padding: 20px; color: #111; }
+                        h2 { color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
+                        .box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px; margin-top: 15px; }
+                        .footer { margin-top: 30px; font-size: 0.85em; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; pt: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <h2>جامعة المنوفية - نظام الجغرافيا المكاني (Menoufia GIS)</h2>
+                    <p><strong>تاريخ التقرير:</strong> ${currentDate}</p>
+                    <div class="box">
+                        <h3>📍 تفاصيل الوجهة:</h3>
+                        <p><strong>الوجهة المطلوبة:</strong> ${destName}</p>
+                        <p><strong>بيانات المسار:</strong> ${routeInfoText}</p>
+                    </div>
+                    <div class="footer">
+                        تم استخراج هذا التقرير إلكترونياً من نظام الجغرافيا المكاني لجامعة المنوفية - جميع الحقوق محفوظة.
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); window.close(); }
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
 
+        function checkOnboarding() {
+            const seen = localStorage.getItem('onboarding_seen');
+            if (!seen) {
+                document.getElementById('onboarding-modal').style.display = 'flex';
+            }
+        }
+
+        function closeOnboarding() {
+            document.getElementById('onboarding-modal').style.display = 'none';
+            localStorage.setItem('onboarding_seen', 'true');
+        }        
 
         function renderMapMarkers(locations) {
             markersLayer.clearLayers();
@@ -506,8 +735,6 @@
                 pinElement.style.cssText = 'width: 18px; height: 18px; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 8px; color: white; cursor: pointer;';
                 pinElement.style.backgroundColor = loc.color;
                 pinElement.textContent = '🏢';
-                
-                // استخدام خاصية title القياسية لضمان ظهور اسم المكان فوراً عند تمرير المؤشر بشكل نظيف
                 pinElement.title = displayName;
 
                 const pinIcon = L.divIcon({
@@ -520,6 +747,7 @@
                 markersLayer.addLayer(marker);
             });
         }
+
         function renderSidebarList(locations) {
             const list = document.getElementById('locations-list'); list.innerHTML = '';
             locations.forEach(loc => {
@@ -528,7 +756,14 @@
 
                 const item = document.createElement('div');
                 item.className = 'location-item';
-                item.onclick = () => map.flyTo([loc.lat, loc.lng], 19, { animate: true });
+                item.onclick = () => {
+                    map.flyTo([loc.lat, loc.lng], 19, { animate: true });
+                    // إغلاق القائمة تلقائياً على الموبايل بمجرد اختيار المكان
+                    const sidebar = document.getElementById('sidebar');
+                    if (sidebar.classList.contains('mobile-open')) {
+                        sidebar.classList.remove('mobile-open');
+                    }
+                };
                 item.innerHTML = `
                     <div class="loc-title">${displayName}</div>
                     <div class="loc-subtitle">🏛️ ${buildingName}</div>
@@ -561,7 +796,14 @@
             document.getElementById('btn-layer-satellite').textContent = t.layerSatellite;
             document.getElementById('btn-layer-terrain').textContent = t.layerTerrain;
             document.getElementById('live-speedometer').textContent = `${t.speedometer}${userCoords.speed} ${currentLang === 'ar' ? 'كم/س' : 'km/h'}`;
-
+            
+            document.getElementById('floor-header-text').textContent = t.floorHeader;
+            document.getElementById('opt-all').textContent = t.floorAll;
+            document.getElementById('opt-ground').textContent = t.floorGround;
+            document.getElementById('opt-first').textContent = t.floorFirst;
+            document.getElementById('opt-second').textContent = t.floorSecond;
+            document.getElementById('opt-fourth').textContent = t.floorFourth;
+            
             updateWeatherDisplay();
             renderMapMarkers(allLocationsData);
             renderSidebarList(allLocationsData);
@@ -576,8 +818,10 @@
                         userCoords.lng = pos.coords.longitude;
                         if (pos.coords.speed !== null && pos.coords.speed >= 0) {
                             userCoords.speed = Math.round(pos.coords.speed * 3.6);
+                        } else {
+                            userCoords.speed = 0; // ضبط تفادي قيم الـ null أثناء المشي البطيء
                         }
-                        if (pos.coords.heading !== null) {
+                        if (pos.coords.heading !== null && !isNaN(pos.coords.heading)) {
                             userCoords.heading = pos.coords.heading;
                         }
 
@@ -585,8 +829,8 @@
 
                         const userIcon = L.divIcon({
                             className: 'user-gps-pin',
-                            html: '<div style="background-color: #22c55e; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px rgba(34,197,94,0.9); transform: rotate(' + userCoords.heading + 'deg);"></div>',
-                            iconSize: [20, 20], iconAnchor: [10, 10]
+                            html: `<div style="background-color: #22c55e; width: 22px; height: 22px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px rgba(34,197,94,0.9); transform: rotate(${userCoords.heading}deg);"></div>`,
+                            iconSize: [22, 22], iconAnchor: [11, 11]
                         });
 
                         if (!userLocationMarker) {
@@ -599,8 +843,8 @@
                             updateLiveRoute(userCoords.lat, userCoords.lng, activeDestination.lat, activeDestination.lng);
                         }
                     },
-                    (err) => { console.log("GPS Notice."); },
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+                    (err) => { console.log("GPS Error: ", err); },
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 3000 }
                 );
             }
         }
@@ -612,6 +856,40 @@
                 map.flyTo([30.5578, 31.0130], 18, { animate: true, duration: 1 });
             }
         }
+
+function forceRefreshGPS() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                userCoords.lat = pos.coords.latitude;
+                userCoords.lng = pos.coords.longitude;
+                alert(`✅ تم تحديث موقعك بدقة:\nخط العرض: ${userCoords.lat.toFixed(4)}\nخط الطول: ${userCoords.lng.toFixed(4)}`);
+                
+                // تحريك الخريطة فوراً لموقعك الحقيقي
+                map.flyTo([userCoords.lat, userCoords.lng], 18, { animate: true });
+                
+                // تحديث دبابيس الـ GPS على الخريطة
+                const userIcon = L.divIcon({
+                    className: 'user-gps-pin',
+                    html: '<div style="background-color: #22c55e; width: 22px; height: 22px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px rgba(34,197,94,0.9);"></div>',
+                    iconSize: [22, 22], iconAnchor: [11, 11]
+                });
+
+                if (!userLocationMarker) {
+                    userLocationMarker = L.marker([userCoords.lat, userCoords.lng], { icon: userIcon }).addTo(map);
+                } else {
+                    userLocationMarker.setLatLng([userCoords.lat, userCoords.lng]);
+                }
+            },
+            (err) => {
+                alert("❌ تعذر قراءة الـ GPS من الموبايل. تأكد من تفعيل خدمة الموقع في هاتفك.");
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    } else {
+        alert("متصفحك لا يدعم خاصية تحديد الموقع.");
+    }
+}
 
         function toggleParkingLocation() {
             const t = i18n[currentLang];
@@ -666,7 +944,32 @@
             document.getElementById('exit-nav-btn').style.display = 'block';
 
             updateLiveRoute(sLat, sLng, activeDestination.lat, activeDestination.lng);
+
+            // 📱 إغلاق القائمة الجانبية تلقائياً على الموبايل بمجرد بدء التوجيه لتظهر الخريطة بالكامل
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar.classList.contains('mobile-open')) {
+                sidebar.classList.remove('mobile-open');
+            }
         }
+
+        function stopLiveNavigation() {
+            isNavigating = false;
+            activeStart = null;
+            activeDestination = null;
+            hasAlertedArrival = false;
+            routeLayer.clearLayers();
+            document.getElementById('nav-btn').style.display = 'block';
+            document.getElementById('exit-nav-btn').style.display = 'none';
+            document.getElementById('route-info').textContent = i18n[currentLang].routePrompt;
+        }
+
+
+
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('mobile-open');
+        }
+
 
         function playBeepSound() {
             try {
@@ -700,55 +1003,55 @@
         }
 
         function openAddPlaceModal() {
-    document.getElementById('add-place-modal').style.display = 'flex';
-}
-function closeAddPlaceModal() {
-    document.getElementById('add-place-modal').style.display = 'none';
-}
-
-function submitNewPlace() {
-    const nameAr = document.getElementById('new-name-ar').value;
-    const nameEn = document.getElementById('new-name-en').value;
-    const category = document.getElementById('new-category').value;
-    const details = document.getElementById('new-details').value;
-
-    if (!nameAr) {
-        alert("يرجى إدخال اسم المكان على الأقل!");
-        return;
-    }
-
-    const payload = {
-        building_id: "MNF-USER-" + Math.floor(Math.random() * 1000),
-        building_name_ar: nameAr,
-        building_name_en: nameEn || nameAr,
-        floor_level_ar: "الطابق الأرضي",
-        floor_level_en: "Ground Floor",
-        section_office_ar: nameAr,
-        section_office_en: nameEn || nameAr,
-        latitude: userCoords.lat || 30.5578,
-        longitude: userCoords.lng || 31.0130,
-        category: category,
-        iso_status: "Not Applicable",
-        details_ar: details || "موقع مضاف بواسطة المستخدم.",
-        details_en: details || "User added location."
-    };
-
-    fetch('/api/add-location', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert("✅ تم إضافة وحفظ المكان بنجاح وتحديث الخريطة!");
-            closeAddPlaceModal();
-            triggerFullRefresh(); // إعادة تحميل الخريطة لتظهر النقطة فوراً
-        } else {
-            alert("❌ حدث خطأ أثناء الحفظ.");
+            document.getElementById('add-place-modal').style.display = 'flex';
         }
-    }).catch(err => console.log(err));
-}
+        function closeAddPlaceModal() {
+            document.getElementById('add-place-modal').style.display = 'none';
+        }
+
+        function submitNewPlace() {
+            const nameAr = document.getElementById('new-name-ar').value;
+            const nameEn = document.getElementById('new-name-en').value;
+            const category = document.getElementById('new-category').value;
+            const details = document.getElementById('new-details').value;
+
+            if (!nameAr) {
+                alert("يرجى إدخال اسم المكان على الأقل!");
+                return;
+            }
+
+            const payload = {
+                building_id: "MNF-USER-" + Math.floor(Math.random() * 1000),
+                building_name_ar: nameAr,
+                building_name_en: nameEn || nameAr,
+                floor_level_ar: "الطابق الأرضي",
+                floor_level_en: "Ground Floor",
+                section_office_ar: nameAr,
+                section_office_en: nameEn || nameAr,
+                latitude: userCoords.lat || 30.5578,
+                longitude: userCoords.lng || 31.0130,
+                category: category,
+                iso_status: "Not Applicable",
+                details_ar: details || "موقع مضاف بواسطة المستخدم.",
+                details_en: details || "User added location."
+            };
+
+            fetch('/api/add-location', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("✅ تم إضافة وحفظ المكان بنجاح وتحديث الخريطة!");
+                    closeAddPlaceModal();
+                    triggerFullRefresh();
+                } else {
+                    alert("❌ حدث خطأ أثناء الحفظ.");
+                }
+            }).catch(err => console.log(err));
+        }
 
         function updateLiveRoute(sLat, sLng, dLat, dLng) {
             if (!isNavigating) return;
@@ -801,9 +1104,14 @@ function submitNewPlace() {
 
         function shareRouteWhatsApp() {
             const endVal = document.getElementById('end-loc').value;
-            if (endVal === "") { alert(currentLang === 'ar' ? "اختر الوجهة أولاً!" : "Select destination!"); return; }
-            const destName = document.getElementById('end-loc').options[document.getElementById('end-loc').selectedIndex].text;
-            const text = encodeURIComponent(`📌 ${currentLang === 'ar' ? 'مسار التوجيه الجامعي المعتمد إلى:' : 'Official campus route to:'} *${destName}*\n📍 ${window.location.href}`);
+            if (endVal === "") { 
+                alert(currentLang === 'ar' ? "اختر الوجهة أولاً لمشاركة إحداثياتها!" : "Select destination first!"); 
+                return; 
+            }
+            const dest = allLocationsData[endVal];
+            const destName = currentLang === 'ar' ? dest.display_name_ar : dest.display_name_en;
+            const mapUrl = `https://www.google.com/maps?q=${dest.lat},${dest.lng}`;
+            const text = encodeURIComponent(`📌 ${currentLang === 'ar' ? 'موقع رسمي داخل جامعة المنوفية:' : 'Official university location:'} *${destName}*\n📍 الإحداثيات المباشرة:\n${mapUrl}`);
             window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
         }
 
@@ -819,33 +1127,29 @@ function submitNewPlace() {
         }
 
         function changeTheme(theme) {
-    let activeTheme = theme;
-    if (theme === 'auto') {
-        // التحقق من إعدادات النظام أو التوقيت المحلي (مثلاً بعد 6 مساءً وقبل 6 صباحاً يعتبر ليلاً)
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const currentHour = new Date().getHours();
-        const isNight = currentHour < 6 || currentHour >= 18;
-        
-        activeTheme = (prefersDark || isNight) ? 'dark' : 'light';
-    }
-    // داخل دالة changeTheme وبعد تحديد activeTheme:
-if (activeTheme === 'dark' && map.hasLayer(tileLayers['streets'])) {
-    tileLayers['streets'].getContainer().classList.add('dark-streets-mode');
-} else if (tileLayers['streets']) {
-    tileLayers['streets'].getContainer().classList.remove('dark-streets-mode');
-}
+            let activeTheme = theme;
+            if (theme === 'auto') {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const currentHour = new Date().getHours();
+                const isNight = currentHour < 6 || currentHour >= 18;
+                activeTheme = (prefersDark || isNight) ? 'dark' : 'light';
+            }
+            
+            if (activeTheme === 'dark' && map.hasLayer(tileLayers['streets'])) {
+                tileLayers['streets'].getContainer().classList.add('dark-streets-mode');
+            } else if (tileLayers['streets']) {
+                tileLayers['streets'].getContainer().classList.remove('dark-streets-mode');
+            }
 
-    
-    document.body.setAttribute('data-theme', activeTheme);
-    localStorage.setItem('theme', theme); // حفظ الاختيار (auto, light, dark)
-}
+            document.body.setAttribute('data-theme', activeTheme);
+            localStorage.setItem('theme', theme);
+        }
 
-// الاستماع لتغيير إعدادات النظام فوراً إذا كان الوضع Auto مفعلًا
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-    if (localStorage.getItem('theme') === 'auto') {
-        changeTheme('auto');
-    }
-});
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (localStorage.getItem('theme') === 'auto') {
+                changeTheme('auto');
+            }
+        });
 
         window.onload = function() {
             initMap();
