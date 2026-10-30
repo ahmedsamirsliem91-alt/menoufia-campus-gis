@@ -109,7 +109,8 @@ if __name__ == '__main__':
     if port == 5000:
         print("=== Menoufia University Smart GIS Server Running Locally ===")
         print("URL: http://127.0.0.1:5000")
-        app.run(debug=True, host="127.0.0.1", port=5000)
+        # تعديل هنا ليكون 0.0.0.0 ليفتح على الآيبي المحلي والشبكة معاً
+        app.run(debug=True, host="0.0.0.0", port=5000)
     else:
-        print("=== Menoufia University Smart GIS Server Running on Hugging Face ===")
+        print("=== Menoufia University Smart GIS Server Running on Cloud ===")
         app.run(host="0.0.0.0", port=port)
